@@ -31,9 +31,22 @@ app.use('/', oauthRouter);
 // Mount import API routes
 app.use('/', importRouter);
 
-// Session-specific manifest route (/:sessionId/manifest.json)
-app.get('/:sessionId([a-f0-9-]{36})/manifest.json', (req, res) => {
+// Helper function to validate UUID format
+function isValidUUID(str) {
+  const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// Session-specific manifest route
+app.get('/:sessionId/manifest.json', (req, res) => {
   const sessionId = req.params.sessionId;
+  
+  // Validate session ID format (UUID)
+  if (!isValidUUID(sessionId)) {
+    // Not a session ID, skip to next route
+    return res.status(404).json({ error: 'Invalid session ID' });
+  }
+  
   const manifest = addonInterface.manifest;
   
   // Create a session-specific manifest
@@ -52,8 +65,13 @@ app.get('/:sessionId([a-f0-9-]{36})/manifest.json', (req, res) => {
 });
 
 // Session-specific catalog route
-app.get('/:sessionId([a-f0-9-]{36})/catalog/:type/:id/:extra?.json', async (req, res) => {
+app.get('/:sessionId/catalog/:type/:id/:extra?.json', async (req, res) => {
   const { sessionId, type, id, extra } = req.params;
+  
+  // Validate session ID format
+  if (!isValidUUID(sessionId)) {
+    return res.status(404).json({ metas: [] });
+  }
   
   // Parse extra parameters
   let extraObj = {};
@@ -81,8 +99,13 @@ app.get('/:sessionId([a-f0-9-]{36})/catalog/:type/:id/:extra?.json', async (req,
 });
 
 // Session-specific stream route
-app.get('/:sessionId([a-f0-9-]{36})/stream/:type/:id.json', async (req, res) => {
+app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
   const { sessionId, type, id } = req.params;
+  
+  // Validate session ID format
+  if (!isValidUUID(sessionId)) {
+    return res.status(404).json({ streams: [] });
+  }
   
   const config = {
     query: { session: sessionId },
