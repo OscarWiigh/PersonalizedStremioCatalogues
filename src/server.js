@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { getRouter } = require('stremio-addon-sdk');
 const { config, validateConfig } = require('./config');
-const addonInterface = require('./addon');
+const addon = require('./addon');
 const oauthRouter = require('./routes/oauth');
 const importRouter = require('./routes/import');
 
@@ -47,7 +47,7 @@ app.get('/:sessionId/manifest.json', (req, res) => {
     return res.status(404).json({ error: 'Invalid session ID' });
   }
   
-  const manifest = addonInterface.manifest;
+  const manifest = addon.manifest;
   
   // Create a session-specific manifest
   const sessionManifest = {
@@ -83,14 +83,20 @@ async function handleCatalogRequest(req, res) {
     }
   }
   
-  // Call catalog handler with session in config
-  const config = {
-    query: { session: sessionId },
-    request: { url: req.url }
+  // Create args for catalog handler
+  const args = {
+    type,
+    id,
+    extra: extraObj,
+    config: {
+      query: { session: sessionId },
+      request: { url: req.url }
+    }
   };
   
   try {
-    const result = await addonInterface.get({ resource: 'catalog', type, id, extra: extraObj, config });
+    // Call the catalog handler directly from the interface
+    const result = await addon.interface.catalog(args);
     res.json(result);
   } catch (error) {
     console.error(`❌ Error serving catalog:`, error);
@@ -111,13 +117,17 @@ app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
     return res.status(404).json({ streams: [] });
   }
   
-  const config = {
-    query: { session: sessionId },
-    request: { url: req.url }
+  const args = {
+    type,
+    id,
+    config: {
+      query: { session: sessionId },
+      request: { url: req.url }
+    }
   };
   
   try {
-    const result = await addonInterface.get({ resource: 'stream', type, id, config });
+    const result = await addon.interface.stream(args);
     res.json(result);
   } catch (error) {
     console.error(`❌ Error serving stream:`, error);
@@ -128,11 +138,11 @@ app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
 // Generic manifest route (no session - public catalogs only)
 app.get('/manifest.json', (req, res) => {
   console.log('📄 Serving generic manifest (no session)');
-  res.json(addonInterface.manifest);
+  res.json(addon.interface.manifest);
 });
 
 // Mount default Stremio addon routes (for backward compatibility)
-const addonRouter = getRouter(addonInterface);
+const addonRouter = getRouter(addon.interface);
 app.use('/', addonRouter);
 
 // Export for Vercel serverless

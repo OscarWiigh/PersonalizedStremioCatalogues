@@ -186,4 +186,10 @@ builder.defineStreamHandler(async (args) => {
   return { streams: [] };
 });
 
-module.exports = builder.getInterface();
+const addonInterface = builder.getInterface();
+
+module.exports = {
+  interface: addonInterface,
+  builder: builder,
+  manifest: manifest
+};
