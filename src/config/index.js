@@ -21,7 +21,7 @@ const config = {
     port: process.env.PORT || 8000
   },
   cache: {
-    traktTTL: 6 * 60 * 60 * 1000, // 6 hours
+    traktTTL: 5 * 60 * 1000, // 5 minutes
     tmdbTTL: 2 * 60 * 60 * 1000, // 2 hours
     netflixTTL: 24 * 60 * 60 * 1000 // 24 hours
   }
