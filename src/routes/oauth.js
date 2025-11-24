@@ -7,15 +7,12 @@ const { config } = require('../config');
 
 const router = express.Router();
 
-// Get base URL (use Vercel URL in production, localhost in dev)
+// Get base URL from the actual request (supports any Vercel URL including previews)
 function getBaseUrl(req) {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // For local development
-  const port = config.server.port;
-  const protocol = req.protocol || 'http';
-  return `${protocol}://localhost:${port}`;
+  // Use the actual host from the request (works for production, preview, and localhost)
+  const host = req.get('host');
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  return `${protocol}://${host}`;
 }
 
 /**
