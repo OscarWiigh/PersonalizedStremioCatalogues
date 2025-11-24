@@ -64,8 +64,8 @@ app.get('/:sessionId/manifest.json', (req, res) => {
   res.json(sessionManifest);
 });
 
-// Session-specific catalog route
-app.get('/:sessionId/catalog/:type/:id/:extra?.json', async (req, res) => {
+// Session-specific catalog route handler
+async function handleCatalogRequest(req, res) {
   const { sessionId, type, id, extra } = req.params;
   
   // Validate session ID format
@@ -96,7 +96,11 @@ app.get('/:sessionId/catalog/:type/:id/:extra?.json', async (req, res) => {
     console.error(`❌ Error serving catalog:`, error);
     res.status(500).json({ metas: [] });
   }
-});
+}
+
+// Session-specific catalog routes (with and without extra)
+app.get('/:sessionId/catalog/:type/:id.json', handleCatalogRequest);
+app.get('/:sessionId/catalog/:type/:id/:extra.json', handleCatalogRequest);
 
 // Session-specific stream route
 app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
