@@ -15,10 +15,24 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personal Catalog',
-  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content',
+  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content. Configure with your session ID after authentication.',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
+  
+  behaviorHints: {
+    configurable: true,
+    configurationRequired: false
+  },
+  
+  config: [
+    {
+      key: 'session',
+      type: 'text',
+      title: 'Session ID',
+      required: true
+    }
+  ],
   
   catalogs: [
     // Your Personal Recommendations Catalog
@@ -26,19 +40,13 @@ const manifest = {
       type: 'movie',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [
-        { name: 'session', isRequired: false },
-        { name: 'skip', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     {
       type: 'series',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [
-        { name: 'session', isRequired: false },
-        { name: 'skip', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     
     // Netflix Sweden Top 10 Catalog (Movies Only)
@@ -46,10 +54,7 @@ const manifest = {
       type: 'movie',
       id: 'netflix-sweden-top10',
       name: 'Netflix Sweden Top 10',
-      extra: [
-        { name: 'session', isRequired: false },
-        { name: 'skip', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     
     // New & Popular Catalog (TMDB)
@@ -57,19 +62,13 @@ const manifest = {
       type: 'movie',
       id: 'new-and-popular',
       name: 'New & Popular',
-      extra: [
-        { name: 'session', isRequired: false },
-        { name: 'skip', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     {
       type: 'series',
       id: 'new-and-popular',
       name: 'New & Popular',
-      extra: [
-        { name: 'session', isRequired: false },
-        { name: 'skip', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     }
   ]
 };
@@ -78,21 +77,16 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from request
- * The Stremio SDK passes query parameters through the args object
+ * Extract session ID from request config
+ * Stremio sends user config values via args.config
  * @param {object} args - Request args from Stremio
  * @returns {string|null} Session ID
  */
 function extractSession(args) {
   try {
-    // Check in extra.session (Stremio SDK passes query params here)
-    if (args.extra && args.extra.session) {
-      return args.extra.session;
-    }
-    
-    // Check in config.query
-    if (args.config && args.config.query && args.config.query.session) {
-      return args.config.query.session;
+    // Session is provided via userConfig in args.config.session
+    if (args.config && args.config.session) {
+      return args.config.session;
     }
   } catch (error) {
     console.log('ℹ️  Could not extract session from request');

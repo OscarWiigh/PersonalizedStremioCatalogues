@@ -233,14 +233,14 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Create session-specific URLs (session as query parameter)
-  // For Stremio desktop: stremio://domain.com/manifest.json?session=xxx
-  // For Stremio web: https://domain.com/manifest.json?session=xxx
-  const manifestUrl = `${baseUrl}/manifest.json?session=${session}`;
+  // Create addon URL (no session in URL - will be configured in Stremio)
+  const manifestUrl = `${baseUrl}/manifest.json`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
+  // Replace URLs and inject session ID
   html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
   html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
+  html = html.replace(/SESSION_ID_HERE/g, session);
   
   res.send(html);
 });
