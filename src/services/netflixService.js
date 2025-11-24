@@ -131,7 +131,7 @@ async function searchTMDB(title, type) {
  */
 async function getNetflixTop10Movies() {
   const cacheKey = 'netflix:sweden:movies:top10';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -139,7 +139,7 @@ async function getNetflixTop10Movies() {
 
   try {
     const metas = await scrapeNetflixTop10('movie');
-    cache.set(cacheKey, metas, config.cache.netflixTTL);
+    await cache.set(cacheKey, metas, config.cache.netflixTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching Netflix Top 10 movies:', error.message);
@@ -153,7 +153,7 @@ async function getNetflixTop10Movies() {
  */
 async function getNetflixTop10Series() {
   const cacheKey = 'netflix:sweden:series:top10';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -161,7 +161,7 @@ async function getNetflixTop10Series() {
 
   try {
     const metas = await scrapeNetflixTop10('series');
-    cache.set(cacheKey, metas, config.cache.netflixTTL);
+    await cache.set(cacheKey, metas, config.cache.netflixTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching Netflix Top 10 series:', error.message);

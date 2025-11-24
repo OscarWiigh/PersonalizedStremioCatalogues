@@ -13,7 +13,7 @@ const cache = require('../utils/cache');
  */
 async function getTrendingMovies() {
   const cacheKey = 'tmdb:movies:trending';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -30,7 +30,7 @@ async function getTrendingMovies() {
     const data = await response.json();
     const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'movie')));
     
-    cache.set(cacheKey, metas, config.cache.tmdbTTL);
+    await cache.set(cacheKey, metas, config.cache.tmdbTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching TMDB trending movies:', error.message);
@@ -44,7 +44,7 @@ async function getTrendingMovies() {
  */
 async function getTrendingSeries() {
   const cacheKey = 'tmdb:series:trending';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -61,7 +61,7 @@ async function getTrendingSeries() {
     const data = await response.json();
     const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'series')));
     
-    cache.set(cacheKey, metas, config.cache.tmdbTTL);
+    await cache.set(cacheKey, metas, config.cache.tmdbTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching TMDB trending series:', error.message);
@@ -75,7 +75,7 @@ async function getTrendingSeries() {
  */
 async function getNowPlayingMovies() {
   const cacheKey = 'tmdb:movies:nowplaying';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -92,7 +92,7 @@ async function getNowPlayingMovies() {
     const data = await response.json();
     const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'movie')));
     
-    cache.set(cacheKey, metas, config.cache.tmdbTTL);
+    await cache.set(cacheKey, metas, config.cache.tmdbTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching TMDB now playing movies:', error.message);
@@ -106,7 +106,7 @@ async function getNowPlayingMovies() {
  */
 async function getPopularSeries() {
   const cacheKey = 'tmdb:series:popular';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -123,7 +123,7 @@ async function getPopularSeries() {
     const data = await response.json();
     const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'series')));
     
-    cache.set(cacheKey, metas, config.cache.tmdbTTL);
+    await cache.set(cacheKey, metas, config.cache.tmdbTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching TMDB popular series:', error.message);

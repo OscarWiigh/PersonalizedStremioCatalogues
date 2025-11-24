@@ -77,7 +77,7 @@ async function getTraktHeaders() {
  */
 async function getMovieRecommendations() {
   const cacheKey = 'trakt:movies:recommendations';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -119,7 +119,7 @@ async function getMovieRecommendations() {
     
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'movie')));
     
-    cache.set(cacheKey, metas, config.cache.traktTTL);
+    await cache.set(cacheKey, metas, config.cache.traktTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching Trakt movie recommendations:', error.message);
@@ -133,7 +133,7 @@ async function getMovieRecommendations() {
  */
 async function getSeriesRecommendations() {
   const cacheKey = 'trakt:series:recommendations';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -173,7 +173,7 @@ async function getSeriesRecommendations() {
     
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'series')));
     
-    cache.set(cacheKey, metas, config.cache.traktTTL);
+    await cache.set(cacheKey, metas, config.cache.traktTTL);
     return metas;
   } catch (error) {
     console.error('Error fetching Trakt series recommendations:', error.message);
@@ -187,7 +187,7 @@ async function getSeriesRecommendations() {
  */
 async function getTrendingMovies() {
   const cacheKey = 'trakt:movies:trending';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -208,7 +208,7 @@ async function getTrendingMovies() {
     console.log(`✅ Trakt returned ${data.length} trending movies`);
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item.movie, 'movie')));
     
-    cache.set(cacheKey, metas, config.cache.traktTTL);
+    await cache.set(cacheKey, metas, config.cache.traktTTL);
     return metas;
   } catch (error) {
     console.error('❌ Error fetching Trakt trending movies:', error.message);
@@ -222,7 +222,7 @@ async function getTrendingMovies() {
  */
 async function getTrendingSeries() {
   const cacheKey = 'trakt:series:trending';
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     return cached;
@@ -243,7 +243,7 @@ async function getTrendingSeries() {
     console.log(`✅ Trakt returned ${data.length} trending series`);
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item.show, 'series')));
     
-    cache.set(cacheKey, metas, config.cache.traktTTL);
+    await cache.set(cacheKey, metas, config.cache.traktTTL);
     return metas;
   } catch (error) {
     console.error('❌ Error fetching Trakt trending series:', error.message);
