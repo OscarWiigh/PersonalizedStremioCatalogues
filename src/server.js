@@ -31,7 +31,80 @@ app.use('/', oauthRouter);
 // Mount import API routes
 app.use('/', importRouter);
 
-// Mount Stremio addon routes
+// Session-specific manifest route (/:sessionId/manifest.json)
+app.get('/:sessionId([a-f0-9-]{36})/manifest.json', (req, res) => {
+  const sessionId = req.params.sessionId;
+  const manifest = addonInterface.manifest;
+  
+  // Create a session-specific manifest
+  const sessionManifest = {
+    ...manifest,
+    id: `${manifest.id}.user`,
+    name: `${manifest.name} (Personal)`,
+    behaviorHints: {
+      configurable: false,
+      configurationRequired: false
+    }
+  };
+  
+  console.log(`📄 Serving manifest for session: ${sessionId.substring(0, 8)}...`);
+  res.json(sessionManifest);
+});
+
+// Session-specific catalog route
+app.get('/:sessionId([a-f0-9-]{36})/catalog/:type/:id/:extra?.json', async (req, res) => {
+  const { sessionId, type, id, extra } = req.params;
+  
+  // Parse extra parameters
+  let extraObj = {};
+  if (extra) {
+    try {
+      extraObj = JSON.parse(decodeURIComponent(extra));
+    } catch (e) {
+      extraObj = {};
+    }
+  }
+  
+  // Call catalog handler with session in config
+  const config = {
+    query: { session: sessionId },
+    request: { url: req.url }
+  };
+  
+  try {
+    const result = await addonInterface.get({ resource: 'catalog', type, id, extra: extraObj, config });
+    res.json(result);
+  } catch (error) {
+    console.error(`❌ Error serving catalog:`, error);
+    res.status(500).json({ metas: [] });
+  }
+});
+
+// Session-specific stream route
+app.get('/:sessionId([a-f0-9-]{36})/stream/:type/:id.json', async (req, res) => {
+  const { sessionId, type, id } = req.params;
+  
+  const config = {
+    query: { session: sessionId },
+    request: { url: req.url }
+  };
+  
+  try {
+    const result = await addonInterface.get({ resource: 'stream', type, id, config });
+    res.json(result);
+  } catch (error) {
+    console.error(`❌ Error serving stream:`, error);
+    res.status(500).json({ streams: [] });
+  }
+});
+
+// Generic manifest route (no session - public catalogs only)
+app.get('/manifest.json', (req, res) => {
+  console.log('📄 Serving generic manifest (no session)');
+  res.json(addonInterface.manifest);
+});
+
+// Mount default Stremio addon routes (for backward compatibility)
 const addonRouter = getRouter(addonInterface);
 app.use('/', addonRouter);
 
