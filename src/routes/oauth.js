@@ -26,8 +26,13 @@ router.get('/', (req, res) => {
   const fs = require('fs');
   let html = fs.readFileSync(path.join(__dirname, '../views/index.html'), 'utf8');
   const baseUrl = getBaseUrl(req);
+  const redirectUri = `${baseUrl}/auth/callback`;
+  
   // Replace localhost:8000 with actual base URL
   html = html.replace(/localhost:8000/g, baseUrl.replace(/^https?:\/\//, ''));
+  // Replace the redirect URI in the instructions
+  html = html.replace(/http:\/\/localhost:8000\/auth\/callback/g, redirectUri);
+  
   res.send(html);
 });
 
