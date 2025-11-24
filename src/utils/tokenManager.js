@@ -1,14 +1,8 @@
 const fetch = require('node-fetch');
-
-let kv = null;
-try {
-  kv = require('@vercel/kv').kv;
-} catch (error) {
-  // KV not available, will use in-memory fallback
-}
+const { getRedisClient } = require('./redis');
 
 /**
- * Token Manager (Multi-User with Vercel KV)
+ * Token Manager (Multi-User with Vercel Redis)
  * Handles storage, retrieval, and refresh of Trakt OAuth tokens per session
  */
 
@@ -26,15 +20,18 @@ async function loadTokens(sessionId) {
     return null;
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      const tokens = await kv.get(`tokens:${sessionId}`);
-      if (tokens) {
-        console.log(`✅ Tokens loaded (KV) for session: ${sessionId.substring(0, 8)}...`);
+      const tokensData = await redis.get(`tokens:${sessionId}`);
+      if (tokensData) {
+        console.log(`✅ Tokens loaded (Redis) for session: ${sessionId.substring(0, 8)}...`);
+        return JSON.parse(tokensData);
       }
-      return tokens;
+      return null;
     } catch (error) {
-      console.error('❌ Error loading tokens from KV:', error.message);
+      console.error('❌ Error loading tokens from Redis:', error.message);
       return null;
     }
   }
@@ -58,14 +55,16 @@ async function saveTokens(sessionId, tokenData) {
     throw new Error('Session ID is required');
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      // Store in KV with 90 day expiration
-      await kv.set(`tokens:${sessionId}`, tokenData, { ex: 90 * 24 * 60 * 60 });
-      console.log(`✅ Tokens saved (KV) for session: ${sessionId.substring(0, 8)}...`);
+      // Store in Redis with 90 day expiration
+      await redis.set(`tokens:${sessionId}`, JSON.stringify(tokenData), { EX: 90 * 24 * 60 * 60 });
+      console.log(`✅ Tokens saved (Redis) for session: ${sessionId.substring(0, 8)}...`);
       return;
     } catch (error) {
-      console.error('❌ Error saving tokens to KV:', error.message);
+      console.error('❌ Error saving tokens to Redis:', error.message);
       // Fall through to in-memory
     }
   }
@@ -227,13 +226,15 @@ async function clearTokens(sessionId) {
     return;
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      await kv.del(`tokens:${sessionId}`);
-      console.log(`✅ Tokens cleared (KV) for session: ${sessionId.substring(0, 8)}...`);
+      await redis.del(`tokens:${sessionId}`);
+      console.log(`✅ Tokens cleared (Redis) for session: ${sessionId.substring(0, 8)}...`);
       return;
     } catch (error) {
-      console.error('❌ Error clearing tokens from KV:', error.message);
+      console.error('❌ Error clearing tokens from Redis:', error.message);
       // Fall through
     }
   }

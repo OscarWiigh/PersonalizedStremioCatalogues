@@ -1,11 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-
-let kv = null;
-try {
-  kv = require('@vercel/kv').kv;
-} catch (error) {
-  // KV not available, will use in-memory fallback
-}
+const { getRedisClient } = require('./redis');
 
 /**
  * Session Manager
@@ -27,14 +21,16 @@ async function createSession(userData = {}) {
     createdAt: new Date().toISOString()
   };
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      // Store in Vercel KV with 90 day expiration
-      await kv.set(`session:${sessionId}`, sessionData, { ex: 90 * 24 * 60 * 60 });
-      console.log(`✅ Session created (KV): ${sessionId}`);
+      // Store in Redis with 90 day expiration
+      await redis.set(`session:${sessionId}`, JSON.stringify(sessionData), { EX: 90 * 24 * 60 * 60 });
+      console.log(`✅ Session created (Redis): ${sessionId}`);
       return sessionId;
     } catch (error) {
-      console.error('❌ Error creating session in KV:', error.message);
+      console.error('❌ Error creating session in Redis:', error.message);
       // Fall through to in-memory
     }
   }
@@ -55,12 +51,14 @@ async function getSession(sessionId) {
     return null;
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      const data = await kv.get(`session:${sessionId}`);
-      return data;
+      const data = await redis.get(`session:${sessionId}`);
+      return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error('❌ Error getting session from KV:', error.message);
+      console.error('❌ Error getting session from Redis:', error.message);
       return null;
     }
   }
@@ -80,18 +78,21 @@ async function updateSession(sessionId, updates) {
     return false;
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      const existing = await kv.get(`session:${sessionId}`);
-      if (!existing) {
+      const existingData = await redis.get(`session:${sessionId}`);
+      if (!existingData) {
         return false;
       }
       
+      const existing = JSON.parse(existingData);
       const updated = { ...existing, ...updates };
-      await kv.set(`session:${sessionId}`, updated, { ex: 90 * 24 * 60 * 60 });
+      await redis.set(`session:${sessionId}`, JSON.stringify(updated), { EX: 90 * 24 * 60 * 60 });
       return true;
     } catch (error) {
-      console.error('❌ Error updating session in KV:', error.message);
+      console.error('❌ Error updating session in Redis:', error.message);
       return false;
     }
   }
@@ -116,13 +117,15 @@ async function deleteSession(sessionId) {
     return false;
   }
 
-  if (kv) {
+  const redis = await getRedisClient();
+  
+  if (redis) {
     try {
-      await kv.del(`session:${sessionId}`);
-      console.log(`🗑️  Session deleted (KV): ${sessionId}`);
+      await redis.del(`session:${sessionId}`);
+      console.log(`🗑️  Session deleted (Redis): ${sessionId}`);
       return true;
     } catch (error) {
-      console.error('❌ Error deleting session from KV:', error.message);
+      console.error('❌ Error deleting session from Redis:', error.message);
       return false;
     }
   }
@@ -154,4 +157,3 @@ module.exports = {
   deleteSession,
   isValidSession
 };
-

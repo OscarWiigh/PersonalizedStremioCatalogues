@@ -1,19 +1,12 @@
 /**
- * Cache with Vercel KV support (falls back to in-memory for local dev)
+ * Cache with Vercel Redis support (falls back to in-memory for local dev)
  */
 
-let kv = null;
-try {
-  // Try to import Vercel KV (only available in production or with .env.local)
-  kv = require('@vercel/kv').kv;
-} catch (error) {
-  console.log('ℹ️  Vercel KV not available, using in-memory cache');
-}
+const { getRedisClient } = require('./redis');
 
 class Cache {
   constructor() {
     this.store = new Map(); // In-memory fallback
-    this.useKV = !!kv;
   }
 
   /**
@@ -22,16 +15,19 @@ class Cache {
    * @returns {Promise<any|null>} Cached value or null if expired/missing
    */
   async get(key) {
-    if (this.useKV) {
+    const redis = await getRedisClient();
+    
+    if (redis) {
       try {
-        const value = await kv.get(key);
+        const value = await redis.get(key);
         if (value !== null) {
-          console.log(`✅ Cache HIT (KV): ${key}`);
+          console.log(`✅ Cache HIT (Redis): ${key}`);
+          return JSON.parse(value);
         }
-        return value;
-      } catch (error) {
-        console.error(`❌ KV get error for ${key}:`, error.message);
         return null;
+      } catch (error) {
+        console.error(`❌ Redis get error for ${key}:`, error.message);
+        // Fall through to in-memory
       }
     }
 
@@ -60,15 +56,17 @@ class Cache {
    * @returns {Promise<void>}
    */
   async set(key, value, ttl) {
-    if (this.useKV) {
+    const redis = await getRedisClient();
+    
+    if (redis) {
       try {
-        // Convert TTL from milliseconds to seconds for Vercel KV
+        // Convert TTL from milliseconds to seconds for Redis
         const ttlSeconds = Math.ceil(ttl / 1000);
-        await kv.set(key, value, { ex: ttlSeconds });
-        console.log(`💾 Cache SET (KV): ${key} (TTL: ${ttlSeconds}s)`);
+        await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });
+        console.log(`💾 Cache SET (Redis): ${key} (TTL: ${ttlSeconds}s)`);
         return;
       } catch (error) {
-        console.error(`❌ KV set error for ${key}:`, error.message);
+        console.error(`❌ Redis set error for ${key}:`, error.message);
         // Fall through to in-memory cache
       }
     }
@@ -85,18 +83,20 @@ class Cache {
    * @returns {Promise<void>}
    */
   async clear(key) {
-    if (this.useKV) {
+    const redis = await getRedisClient();
+    
+    if (redis) {
       try {
         if (key) {
-          await kv.del(key);
-          console.log(`🗑️  Cache CLEAR (KV): ${key}`);
+          await redis.del(key);
+          console.log(`🗑️  Cache CLEAR (Redis): ${key}`);
         } else {
-          // KV doesn't have a clear-all, so we just log a warning
-          console.log('⚠️  KV clear-all not implemented (would be expensive)');
+          // Redis doesn't have a clear-all, so we just log a warning
+          console.log('⚠️  Redis clear-all not implemented (would be expensive)');
         }
         return;
       } catch (error) {
-        console.error(`❌ KV clear error:`, error.message);
+        console.error(`❌ Redis clear error:`, error.message);
         // Fall through
       }
     }
@@ -116,11 +116,13 @@ class Cache {
    * @returns {Promise<object>} Cache stats
    */
   async stats() {
-    if (this.useKV) {
-      // KV doesn't provide easy stats, return placeholder
+    const redis = await getRedisClient();
+    
+    if (redis) {
+      // Redis doesn't provide easy stats, return placeholder
       return {
-        type: 'kv',
-        message: 'Stats not available for Vercel KV'
+        type: 'redis',
+        message: 'Stats not available for Redis'
       };
     }
 
