@@ -9,9 +9,21 @@ const router = express.Router();
 
 // Get base URL from the actual request (supports any Vercel URL including previews)
 function getBaseUrl(req) {
-  // Use the actual host from the request (works for production, preview, and localhost)
   const host = req.get('host');
-  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  
+  // Vercel always uses HTTPS, localhost uses HTTP
+  let protocol = 'http';
+  
+  // Check if running on Vercel or if the request came through HTTPS
+  if (process.env.VERCEL || req.get('x-forwarded-proto') === 'https' || req.secure) {
+    protocol = 'https';
+  }
+  
+  // For localhost, keep HTTP
+  if (host && host.includes('localhost')) {
+    protocol = 'http';
+  }
+  
   return `${protocol}://${host}`;
 }
 
