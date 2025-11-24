@@ -3,16 +3,17 @@ const traktService = require('./services/traktService');
 const tmdbService = require('./services/tmdbService');
 const netflixService = require('./services/netflixService');
 const scrobbleService = require('./services/scrobbleService');
+const sessionManager = require('./utils/sessionManager');
 
 /**
- * Stremio Add-on Definition
+ * Stremio Add-on Definition (Multi-User)
  * Provides three catalogs: Trakt Recommendations, Netflix Sweden Top 10, and New & Popular
  */
 
 // Define the add-on manifest
 const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
-  version: '1.0.0',
+  version: '2.0.0',
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content',
   
@@ -62,11 +63,38 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Catalog Handler
- * Routes catalog requests to appropriate service
+ * Extract session ID from request config
+ * @param {object} config - Request config from Stremio
+ * @returns {string|null} Session ID
  */
-builder.defineCatalogHandler(async ({ type, id, extra }) => {
-  console.log(`📺 Catalog request: type=${type}, id=${id}`);
+function extractSession(config) {
+  try {
+    // Session can be in URL query parameters
+    if (config && config.query && config.query.session) {
+      return config.query.session;
+    }
+    
+    // Try to extract from request object
+    if (config && config.request && config.request.url) {
+      const url = new URL(config.request.url, 'http://localhost');
+      return url.searchParams.get('session');
+    }
+  } catch (error) {
+    console.log('ℹ️  Could not extract session from request');
+  }
+  
+  return null;
+}
+
+/**
+ * Catalog Handler
+ * Routes catalog requests to appropriate service (session-aware)
+ */
+builder.defineCatalogHandler(async (args) => {
+  const { type, id, extra, config } = args;
+  const sessionId = extractSession(config);
+  
+  console.log(`📺 Catalog request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
   try {
     let metas = [];
@@ -74,21 +102,35 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
     // Route to appropriate service based on catalog ID
     switch (id) {
       case 'trakt-recommendations':
+        // Trakt recommendations require authentication
+        if (!sessionId) {
+          console.warn('⚠️  No session provided for Trakt recommendations, returning empty');
+          return { metas: [] };
+        }
+        
+        // Verify session is valid
+        const isValid = await sessionManager.isValidSession(sessionId);
+        if (!isValid) {
+          console.warn('⚠️  Invalid session for Trakt recommendations, returning empty');
+          return { metas: [] };
+        }
+        
         if (type === 'movie') {
-          metas = await traktService.getMovieRecommendations();
+          metas = await traktService.getMovieRecommendations(sessionId);
         } else if (type === 'series') {
-          metas = await traktService.getSeriesRecommendations();
+          metas = await traktService.getSeriesRecommendations(sessionId);
         }
         break;
         
       case 'netflix-sweden-top10':
-        // Only show movies for Netflix Top 10
+        // Netflix Top 10 is public, no authentication needed
         if (type === 'movie') {
           metas = await netflixService.getNetflixTop10Movies();
         }
         break;
         
       case 'new-and-popular':
+        // TMDB is public, no authentication needed
         metas = await tmdbService.getNewAndPopular(type);
         break;
         
@@ -113,21 +155,31 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
 
 /**
  * Stream Handler
- * Used to detect when user starts watching content
+ * Used to detect when user starts watching content (session-aware for scrobbling)
  * We don't provide actual streams, but use this as a trigger for watch syncing
  */
-builder.defineStreamHandler(async ({ type, id }) => {
-  console.log(`🎬 Stream request: type=${type}, id=${id}`);
+builder.defineStreamHandler(async (args) => {
+  const { type, id, config } = args;
+  const sessionId = extractSession(config);
+  
+  console.log(`🎬 Stream request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
   // Parse the ID to extract IMDB ID and episode info
   const { imdbId, season, episode } = scrobbleService.parseStremioId(id);
   
-  if (imdbId) {
-    // Mark as watched on Trakt (fire and forget)
-    scrobbleService.markAsWatched(imdbId, type, season, episode)
-      .catch(error => {
-        console.error('Error marking as watched:', error.message);
-      });
+  if (imdbId && sessionId) {
+    // Mark as watched on Trakt (fire and forget) - requires session
+    const isValid = await sessionManager.isValidSession(sessionId);
+    if (isValid) {
+      scrobbleService.markAsWatched(sessionId, imdbId, type, season, episode)
+        .catch(error => {
+          console.error('Error marking as watched:', error.message);
+        });
+    } else {
+      console.log('ℹ️  Invalid session, skipping watch sync');
+    }
+  } else if (!sessionId) {
+    console.log('ℹ️  No session provided, skipping watch sync');
   }
   
   // Return empty streams (we don't provide any streams)
@@ -135,5 +187,3 @@ builder.defineStreamHandler(async ({ type, id }) => {
 });
 
 module.exports = builder.getInterface();
-
-

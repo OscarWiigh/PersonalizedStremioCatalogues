@@ -1,51 +1,91 @@
-const fs = require('fs');
-const path = require('path');
 const fetch = require('node-fetch');
 
-const TOKEN_FILE = path.join(__dirname, '../../.trakt-auth.json');
+let kv = null;
+try {
+  kv = require('@vercel/kv').kv;
+} catch (error) {
+  // KV not available, will use in-memory fallback
+}
 
 /**
- * Token Manager
- * Handles storage, retrieval, and refresh of Trakt OAuth tokens
+ * Token Manager (Multi-User with Vercel KV)
+ * Handles storage, retrieval, and refresh of Trakt OAuth tokens per session
  */
 
+// In-memory fallback for local development
+const tokenStore = new Map();
+
 /**
- * Load tokens from file
- * @returns {object|null} Token data or null if not found
+ * Load tokens for a specific session
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<object|null>} Token data or null if not found
  */
-function loadTokens() {
-  try {
-    if (!fs.existsSync(TOKEN_FILE)) {
-      return null;
-    }
-    const data = fs.readFileSync(TOKEN_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('❌ Error loading tokens:', error.message);
+async function loadTokens(sessionId) {
+  if (!sessionId) {
+    console.log('ℹ️  No session ID provided');
     return null;
   }
-}
 
-/**
- * Save tokens to file
- * @param {object} tokenData - Token data to save
- */
-function saveTokens(tokenData) {
-  try {
-    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2), 'utf8');
-    console.log('✅ Tokens saved successfully');
-  } catch (error) {
-    console.error('❌ Error saving tokens:', error.message);
-    throw error;
+  if (kv) {
+    try {
+      const tokens = await kv.get(`tokens:${sessionId}`);
+      if (tokens) {
+        console.log(`✅ Tokens loaded (KV) for session: ${sessionId.substring(0, 8)}...`);
+      }
+      return tokens;
+    } catch (error) {
+      console.error('❌ Error loading tokens from KV:', error.message);
+      return null;
+    }
   }
+
+  // In-memory fallback
+  const tokens = tokenStore.get(sessionId);
+  if (tokens) {
+    console.log(`✅ Tokens loaded (memory) for session: ${sessionId.substring(0, 8)}...`);
+  }
+  return tokens || null;
 }
 
 /**
- * Check if user is authenticated
- * @returns {boolean} True if authenticated
+ * Save tokens for a specific session
+ * @param {string} sessionId - Session ID
+ * @param {object} tokenData - Token data to save
+ * @returns {Promise<void>}
  */
-function isAuthenticated() {
-  const tokens = loadTokens();
+async function saveTokens(sessionId, tokenData) {
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+
+  if (kv) {
+    try {
+      // Store in KV with 90 day expiration
+      await kv.set(`tokens:${sessionId}`, tokenData, { ex: 90 * 24 * 60 * 60 });
+      console.log(`✅ Tokens saved (KV) for session: ${sessionId.substring(0, 8)}...`);
+      return;
+    } catch (error) {
+      console.error('❌ Error saving tokens to KV:', error.message);
+      // Fall through to in-memory
+    }
+  }
+
+  // In-memory fallback
+  tokenStore.set(sessionId, tokenData);
+  console.log(`✅ Tokens saved (memory) for session: ${sessionId.substring(0, 8)}...`);
+}
+
+/**
+ * Check if session is authenticated
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<boolean>} True if authenticated
+ */
+async function isAuthenticated(sessionId) {
+  if (!sessionId) {
+    return false;
+  }
+
+  const tokens = await loadTokens(sessionId);
   return tokens && tokens.access_token ? true : false;
 }
 
@@ -68,15 +108,16 @@ function isTokenExpired(tokens) {
 
 /**
  * Refresh access token using refresh token
+ * @param {string} sessionId - Session ID
  * @param {object} tokens - Current token data
  * @returns {Promise<object>} New token data
  */
-async function refreshAccessToken(tokens) {
+async function refreshAccessToken(sessionId, tokens) {
   if (!tokens || !tokens.refresh_token) {
     throw new Error('No refresh token available');
   }
 
-  console.log('🔄 Refreshing Trakt access token...');
+  console.log(`🔄 Refreshing Trakt access token for session: ${sessionId.substring(0, 8)}...`);
 
   try {
     const response = await fetch('https://api.trakt.tv/oauth/token', {
@@ -88,7 +129,7 @@ async function refreshAccessToken(tokens) {
         refresh_token: tokens.refresh_token,
         client_id: tokens.client_id,
         client_secret: tokens.client_secret,
-        redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
+        redirect_uri: tokens.redirect_uri || 'urn:ietf:wg:oauth:2.0:oob',
         grant_type: 'refresh_token'
       })
     });
@@ -110,10 +151,11 @@ async function refreshAccessToken(tokens) {
       refresh_token: data.refresh_token,
       expires_at: expiresAt,
       client_id: tokens.client_id,
-      client_secret: tokens.client_secret
+      client_secret: tokens.client_secret,
+      redirect_uri: tokens.redirect_uri
     };
 
-    saveTokens(newTokens);
+    await saveTokens(sessionId, newTokens);
     console.log('✅ Token refreshed successfully');
     
     return newTokens;
@@ -124,21 +166,27 @@ async function refreshAccessToken(tokens) {
 }
 
 /**
- * Get valid access token (refreshes if needed)
+ * Get valid access token for a session (refreshes if needed)
+ * @param {string} sessionId - Session ID
  * @returns {Promise<string|null>} Access token or null if not authenticated
  */
-async function getAccessToken() {
-  let tokens = loadTokens();
+async function getAccessToken(sessionId) {
+  if (!sessionId) {
+    console.log('ℹ️  No session ID provided');
+    return null;
+  }
+
+  let tokens = await loadTokens(sessionId);
   
   if (!tokens) {
-    console.log('ℹ️  No authentication tokens found');
+    console.log(`ℹ️  No authentication tokens found for session: ${sessionId.substring(0, 8)}...`);
     return null;
   }
 
   // Check if token needs refresh
   if (isTokenExpired(tokens)) {
     try {
-      tokens = await refreshAccessToken(tokens);
+      tokens = await refreshAccessToken(sessionId, tokens);
     } catch (error) {
       console.error('❌ Failed to refresh token, user needs to re-authenticate');
       return null;
@@ -149,27 +197,66 @@ async function getAccessToken() {
 }
 
 /**
- * Clear stored tokens (logout)
+ * Get client credentials for a session
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<object|null>} Client credentials or null
  */
-function clearTokens() {
-  try {
-    if (fs.existsSync(TOKEN_FILE)) {
-      fs.unlinkSync(TOKEN_FILE);
-      console.log('✅ Tokens cleared');
-    }
-  } catch (error) {
-    console.error('❌ Error clearing tokens:', error.message);
+async function getClientCredentials(sessionId) {
+  if (!sessionId) {
+    return null;
   }
+
+  const tokens = await loadTokens(sessionId);
+  if (!tokens) {
+    return null;
+  }
+
+  return {
+    clientId: tokens.client_id,
+    clientSecret: tokens.client_secret
+  };
 }
 
 /**
- * Get user info (for testing/validation)
+ * Clear tokens for a specific session (logout)
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<void>}
+ */
+async function clearTokens(sessionId) {
+  if (!sessionId) {
+    return;
+  }
+
+  if (kv) {
+    try {
+      await kv.del(`tokens:${sessionId}`);
+      console.log(`✅ Tokens cleared (KV) for session: ${sessionId.substring(0, 8)}...`);
+      return;
+    } catch (error) {
+      console.error('❌ Error clearing tokens from KV:', error.message);
+      // Fall through
+    }
+  }
+
+  // In-memory fallback
+  tokenStore.delete(sessionId);
+  console.log(`✅ Tokens cleared (memory) for session: ${sessionId.substring(0, 8)}...`);
+}
+
+/**
+ * Get user info for a session (for testing/validation)
+ * @param {string} sessionId - Session ID
  * @returns {Promise<object|null>} User info or null
  */
-async function getUserInfo() {
-  const token = await getAccessToken();
+async function getUserInfo(sessionId) {
+  const token = await getAccessToken(sessionId);
   
   if (!token) {
+    return null;
+  }
+
+  const credentials = await getClientCredentials(sessionId);
+  if (!credentials) {
     return null;
   }
 
@@ -178,6 +265,7 @@ async function getUserInfo() {
       headers: {
         'Content-Type': 'application/json',
         'trakt-api-version': '2',
+        'trakt-api-key': credentials.clientId,
         'Authorization': `Bearer ${token}`
       }
     });
@@ -198,7 +286,7 @@ module.exports = {
   saveTokens,
   isAuthenticated,
   getAccessToken,
+  getClientCredentials,
   clearTokens,
   getUserInfo
 };
-

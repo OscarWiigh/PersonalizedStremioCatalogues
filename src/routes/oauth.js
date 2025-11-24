@@ -2,26 +2,35 @@ const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
 const tokenManager = require('../utils/tokenManager');
+const sessionManager = require('../utils/sessionManager');
 const { config } = require('../config');
 
 const router = express.Router();
 
-// Get the configured port for redirect URI
-const PORT = config.server.port;
-const REDIRECT_URI = `http://localhost:${PORT}/auth/callback`;
+// Get base URL (use Vercel URL in production, localhost in dev)
+function getBaseUrl(req) {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // For local development
+  const port = config.server.port;
+  const protocol = req.protocol || 'http';
+  return `${protocol}://localhost:${port}`;
+}
 
 /**
- * OAuth Routes for Trakt Authentication
+ * OAuth Routes for Trakt Authentication (Multi-User)
  */
 
 /**
  * GET / - Serve landing page
  */
 router.get('/', (req, res) => {
-  // Read the HTML file and replace the placeholder with actual port
   const fs = require('fs');
   let html = fs.readFileSync(path.join(__dirname, '../views/index.html'), 'utf8');
-  html = html.replace(/localhost:8000/g, `localhost:${PORT}`);
+  const baseUrl = getBaseUrl(req);
+  // Replace localhost:8000 with actual base URL
+  html = html.replace(/localhost:8000/g, baseUrl.replace(/^https?:\/\//, ''));
   res.send(html);
 });
 
@@ -46,21 +55,27 @@ router.post('/auth/start', (req, res) => {
   
   console.log(`🔐 Initiating OAuth with Client ID: ${trimmedClientId.substring(0, 10)}...`);
   
-  // Store credentials temporarily in session/cookie for callback
-  // For single-user local setup, we can use a simple approach
-  res.cookie('trakt_client_id', trimmedClientId, { httpOnly: true, maxAge: 10 * 60 * 1000 }); // 10 min
-  res.cookie('trakt_client_secret', trimmedClientSecret, { httpOnly: true, maxAge: 10 * 60 * 1000 });
+  // Store credentials temporarily in cookies for callback
+  res.cookie('trakt_client_id', trimmedClientId, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
+  res.cookie('trakt_client_secret', trimmedClientSecret, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
+  
+  // Build redirect URI based on environment
+  const baseUrl = getBaseUrl(req);
+  const redirectUri = `${baseUrl}/auth/callback`;
+  
+  // Store redirect URI for callback
+  res.cookie('trakt_redirect_uri', redirectUri, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
   
   // Build Trakt OAuth URL
-  const authUrl = `https://trakt.tv/oauth/authorize?response_type=code&client_id=${encodeURIComponent(trimmedClientId)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  const authUrl = `https://trakt.tv/oauth/authorize?response_type=code&client_id=${encodeURIComponent(trimmedClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   
-  console.log(`   Redirect URI: ${REDIRECT_URI}`);
+  console.log(`   Redirect URI: ${redirectUri}`);
   res.redirect(authUrl);
 });
 
 /**
  * GET /auth/callback - OAuth callback from Trakt
- * Exchanges authorization code for access token
+ * Exchanges authorization code for access token and creates session
  */
 router.get('/auth/callback', async (req, res) => {
   const { code, error } = req.query;
@@ -77,14 +92,15 @@ router.get('/auth/callback', async (req, res) => {
   // Retrieve client credentials from cookies
   const clientId = req.cookies.trakt_client_id;
   const clientSecret = req.cookies.trakt_client_secret;
+  const redirectUri = req.cookies.trakt_redirect_uri;
   
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !redirectUri) {
     return res.redirect('/error?error=' + encodeURIComponent('Session expired. Please start over.'));
   }
   
   try {
     console.log('🔄 Exchanging authorization code for access token...');
-    console.log(`   Redirect URI: ${REDIRECT_URI}`);
+    console.log(`   Redirect URI: ${redirectUri}`);
     console.log(`   Client ID (length): ${clientId.length}`);
     
     // Trim credentials in case of copy-paste issues
@@ -95,7 +111,7 @@ router.get('/auth/callback', async (req, res) => {
       code: code,
       client_id: trimmedClientId,
       client_secret: trimmedClientSecret,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code'
     };
     
@@ -119,7 +135,6 @@ router.get('/auth/callback', async (req, res) => {
       console.error(`❌ Token exchange failed: ${response.status} ${response.statusText}`);
       console.error(`Response: ${errorText}`);
       
-      // Try to parse the error for more details
       let errorMsg = `Failed to get access token: ${response.statusText}`;
       try {
         const errorJson = JSON.parse(errorText);
@@ -140,30 +155,42 @@ router.get('/auth/callback', async (req, res) => {
     // Calculate expiration timestamp
     const expiresAt = Date.now() + (data.expires_in * 1000);
     
-    // Save tokens
+    // Create a new session for this user
+    const sessionId = await sessionManager.createSession({
+      authenticatedAt: new Date().toISOString()
+    });
+    
+    console.log(`✅ Created session: ${sessionId.substring(0, 8)}...`);
+    
+    // Save tokens with session ID
     const tokenData = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_at: expiresAt,
       client_id: trimmedClientId,
-      client_secret: trimmedClientSecret
+      client_secret: trimmedClientSecret,
+      redirect_uri: redirectUri
     };
     
-    tokenManager.saveTokens(tokenData);
+    await tokenManager.saveTokens(sessionId, tokenData);
     
     // Clear cookies
     res.clearCookie('trakt_client_id');
     res.clearCookie('trakt_client_secret');
+    res.clearCookie('trakt_redirect_uri');
     
     console.log('✅ Authentication successful!');
     
     // Get user info for confirmation
-    const userInfo = await tokenManager.getUserInfo();
+    const userInfo = await tokenManager.getUserInfo(sessionId);
     if (userInfo) {
       console.log(`✅ Authenticated as: ${userInfo.username}`);
+      // Store username in session
+      await sessionManager.updateSession(sessionId, { username: userInfo.username });
     }
     
-    res.redirect('/success');
+    // Redirect to success page with session ID
+    res.redirect(`/success?session=${sessionId}`);
   } catch (error) {
     console.error('❌ Error during token exchange:', error.message);
     res.redirect('/error?error=' + encodeURIComponent(`Error: ${error.message}`));
@@ -173,11 +200,34 @@ router.get('/auth/callback', async (req, res) => {
 /**
  * GET /success - Success page
  */
-router.get('/success', (req, res) => {
+router.get('/success', async (req, res) => {
+  const { session } = req.query;
+  
+  if (!session) {
+    return res.redirect('/error?error=' + encodeURIComponent('No session provided'));
+  }
+  
+  // Verify session exists
+  const isValid = await sessionManager.isValidSession(session);
+  if (!isValid) {
+    return res.redirect('/error?error=' + encodeURIComponent('Invalid session'));
+  }
+  
   const fs = require('fs');
   let html = fs.readFileSync(path.join(__dirname, '../views/success.html'), 'utf8');
-  // Replace port in stremio:// URL
-  html = html.replace(/stremio:\/\/127\.0\.0\.1:8000/g, `stremio://127.0.0.1:${PORT}`);
+  
+  // Get base URL
+  const baseUrl = getBaseUrl(req);
+  
+  // Replace addon URL with session-specific URL
+  // For Stremio desktop: stremio://domain.com/manifest.json?session=xxx
+  // For Stremio web: https://domain.com/manifest.json?session=xxx
+  const manifestUrl = `${baseUrl}/manifest.json?session=${session}`;
+  const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
+  
+  html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
+  html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
+  
   res.send(html);
 });
 
@@ -192,7 +242,16 @@ router.get('/error', (req, res) => {
  * GET /auth/status - Check authentication status (JSON API)
  */
 router.get('/auth/status', async (req, res) => {
-  const isAuth = tokenManager.isAuthenticated();
+  const { session } = req.query;
+  
+  if (!session) {
+    return res.json({
+      authenticated: false,
+      message: 'No session provided'
+    });
+  }
+  
+  const isAuth = await tokenManager.isAuthenticated(session);
   
   if (!isAuth) {
     return res.json({
@@ -202,11 +261,12 @@ router.get('/auth/status', async (req, res) => {
   }
   
   try {
-    const userInfo = await tokenManager.getUserInfo();
+    const userInfo = await tokenManager.getUserInfo(session);
     
     if (userInfo) {
       res.json({
         authenticated: true,
+        session: session.substring(0, 8) + '...',
         username: userInfo.username,
         name: userInfo.name,
         vip: userInfo.vip || false,
@@ -227,13 +287,18 @@ router.get('/auth/status', async (req, res) => {
 });
 
 /**
- * POST /auth/logout - Clear tokens
+ * POST /auth/logout - Clear tokens for session
  */
-router.post('/auth/logout', (req, res) => {
-  tokenManager.clearTokens();
-  console.log('✅ Logged out');
+router.post('/auth/logout', async (req, res) => {
+  const { session } = req.body || req.query;
+  
+  if (session) {
+    await tokenManager.clearTokens(session);
+    await sessionManager.deleteSession(session);
+    console.log(`✅ Logged out session: ${session.substring(0, 8)}...`);
+  }
+  
   res.redirect('/');
 });
 
 module.exports = router;
-
