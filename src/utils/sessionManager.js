@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
 const { getRedisClient } = require('./redis');
+const crypto = require('crypto');
 
 /**
  * Session Manager
@@ -10,12 +10,20 @@ const { getRedisClient } = require('./redis');
 const sessionStore = new Map();
 
 /**
+ * Generate a UUID v4
+ * @returns {string} UUID v4 string
+ */
+function generateUUID() {
+  return crypto.randomUUID();
+}
+
+/**
  * Create a new session
  * @param {object} userData - User data to store (e.g., username)
  * @returns {Promise<string>} Session ID
  */
 async function createSession(userData = {}) {
-  const sessionId = uuidv4();
+  const sessionId = generateUUID();
   const sessionData = {
     ...userData,
     createdAt: new Date().toISOString()
