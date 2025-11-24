@@ -26,13 +26,19 @@ const manifest = {
       type: 'movie',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'session', isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
     },
     {
       type: 'series',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'session', isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
     },
     
     // Netflix Sweden Top 10 Catalog (Movies Only)
@@ -40,7 +46,10 @@ const manifest = {
       type: 'movie',
       id: 'netflix-sweden-top10',
       name: 'Netflix Sweden Top 10',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'session', isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
     },
     
     // New & Popular Catalog (TMDB)
@@ -48,13 +57,19 @@ const manifest = {
       type: 'movie',
       id: 'new-and-popular',
       name: 'New & Popular',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'session', isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
     },
     {
       type: 'series',
       id: 'new-and-popular',
       name: 'New & Popular',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'session', isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
     }
   ]
 };
@@ -63,21 +78,21 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from request config
- * @param {object} config - Request config from Stremio
+ * Extract session ID from request
+ * The Stremio SDK passes query parameters through the args object
+ * @param {object} args - Request args from Stremio
  * @returns {string|null} Session ID
  */
-function extractSession(config) {
+function extractSession(args) {
   try {
-    // Session can be in URL query parameters
-    if (config && config.query && config.query.session) {
-      return config.query.session;
+    // Check in extra.session (Stremio SDK passes query params here)
+    if (args.extra && args.extra.session) {
+      return args.extra.session;
     }
     
-    // Try to extract from request object
-    if (config && config.request && config.request.url) {
-      const url = new URL(config.request.url, 'http://localhost');
-      return url.searchParams.get('session');
+    // Check in config.query
+    if (args.config && args.config.query && args.config.query.session) {
+      return args.config.query.session;
     }
   } catch (error) {
     console.log('ℹ️  Could not extract session from request');
@@ -91,8 +106,8 @@ function extractSession(config) {
  * Routes catalog requests to appropriate service (session-aware)
  */
 builder.defineCatalogHandler(async (args) => {
-  const { type, id, extra, config } = args;
-  const sessionId = extractSession(config);
+  const { type, id, extra } = args;
+  const sessionId = extractSession(args);
   
   console.log(`📺 Catalog request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
@@ -159,8 +174,8 @@ builder.defineCatalogHandler(async (args) => {
  * We don't provide actual streams, but use this as a trigger for watch syncing
  */
 builder.defineStreamHandler(async (args) => {
-  const { type, id, config } = args;
-  const sessionId = extractSession(config);
+  const { type, id } = args;
+  const sessionId = extractSession(args);
   
   console.log(`🎬 Stream request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
@@ -186,10 +201,4 @@ builder.defineStreamHandler(async (args) => {
   return { streams: [] };
 });
 
-const addonInterface = builder.getInterface();
-
-module.exports = {
-  interface: addonInterface,
-  builder: builder,
-  manifest: manifest
-};
+module.exports = builder.getInterface();

@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { getRouter } = require('stremio-addon-sdk');
 const { config, validateConfig } = require('./config');
-const addon = require('./addon');
+const addonInterface = require('./addon');
 const oauthRouter = require('./routes/oauth');
 const importRouter = require('./routes/import');
 
@@ -25,126 +25,45 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(bodyParser.json({ limit: '10mb' })); // Increased limit for Netflix CSV uploads
 app.use(cookieParser());
 
+// Redis test endpoint
+app.get('/test/redis', async (req, res) => {
+  const { getRedisClient } = require('./utils/redis');
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      // Test set and get
+      await redis.set('test:key', 'Hello Redis!', { EX: 60 });
+      const value = await redis.get('test:key');
+      res.json({
+        success: true,
+        message: 'Redis is working!',
+        testValue: value,
+        redisConnected: redis.isOpen
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'Redis not configured (using in-memory fallback)',
+        redisConnected: false
+      });
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'Redis error: ' + error.message,
+      error: error.toString()
+    });
+  }
+});
+
 // Mount OAuth routes (web interface)
 app.use('/', oauthRouter);
 
 // Mount import API routes
 app.use('/', importRouter);
 
-// Helper function to validate UUID format
-function isValidUUID(str) {
-  const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-  return uuidRegex.test(str);
-}
-
-// Session-specific manifest route
-app.get('/:sessionId/manifest.json', (req, res) => {
-  const sessionId = req.params.sessionId;
-  
-  // Validate session ID format (UUID)
-  if (!isValidUUID(sessionId)) {
-    // Not a session ID, skip to next route
-    return res.status(404).json({ error: 'Invalid session ID' });
-  }
-  
-  const manifest = addon.manifest;
-  
-  // Create a session-specific manifest
-  const sessionManifest = {
-    ...manifest,
-    id: `${manifest.id}.user`,
-    name: `${manifest.name} (Personal)`,
-    behaviorHints: {
-      configurable: false,
-      configurationRequired: false
-    }
-  };
-  
-  console.log(`📄 Serving manifest for session: ${sessionId.substring(0, 8)}...`);
-  res.json(sessionManifest);
-});
-
-// Session-specific catalog route handler
-async function handleCatalogRequest(req, res) {
-  const { sessionId, type, id, extra } = req.params;
-  
-  // Validate session ID format
-  if (!isValidUUID(sessionId)) {
-    return res.status(404).json({ metas: [] });
-  }
-  
-  // Parse extra parameters
-  let extraObj = {};
-  if (extra) {
-    try {
-      extraObj = JSON.parse(decodeURIComponent(extra));
-    } catch (e) {
-      extraObj = {};
-    }
-  }
-  
-  // Create request object for the addon interface
-  const request = {
-    resource: 'catalog',
-    type,
-    id,
-    extra: extraObj,
-    config: {
-      query: { session: sessionId },
-      request: { url: req.url }
-    }
-  };
-  
-  try {
-    // Call the get method from the interface
-    const result = await addon.interface.get(request);
-    res.json(result);
-  } catch (error) {
-    console.error(`❌ Error serving catalog:`, error);
-    res.status(500).json({ metas: [] });
-  }
-}
-
-// Session-specific catalog routes (with and without extra)
-app.get('/:sessionId/catalog/:type/:id.json', handleCatalogRequest);
-app.get('/:sessionId/catalog/:type/:id/:extra.json', handleCatalogRequest);
-
-// Session-specific stream route
-app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
-  const { sessionId, type, id } = req.params;
-  
-  // Validate session ID format
-  if (!isValidUUID(sessionId)) {
-    return res.status(404).json({ streams: [] });
-  }
-  
-  const request = {
-    resource: 'stream',
-    type,
-    id,
-    config: {
-      query: { session: sessionId },
-      request: { url: req.url }
-    }
-  };
-  
-  try {
-    const result = await addon.interface.get(request);
-    res.json(result);
-  } catch (error) {
-    console.error(`❌ Error serving stream:`, error);
-    res.status(500).json({ streams: [] });
-  }
-});
-
-// Generic manifest route (no session - public catalogs only)
-app.get('/manifest.json', (req, res) => {
-  console.log('📄 Serving generic manifest (no session)');
-  res.json(addon.interface.manifest);
-});
-
-// Mount default Stremio addon routes (for backward compatibility)
-const addonRouter = getRouter(addon.interface);
+// Mount default Stremio addon routes with session support
+const addonRouter = getRouter(addonInterface);
 app.use('/', addonRouter);
 
 // Export for Vercel serverless
