@@ -2,6 +2,7 @@ const { addonBuilder } = require('stremio-addon-sdk');
 const traktService = require('./services/traktService');
 const tmdbService = require('./services/tmdbService');
 const netflixService = require('./services/netflixService');
+const scrobbleService = require('./services/scrobbleService');
 
 /**
  * Stremio Add-on Definition
@@ -15,7 +16,7 @@ const manifest = {
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content',
   
-  resources: ['catalog'],
+  resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
   
   catalogs: [
@@ -110,5 +111,29 @@ builder.defineCatalogHandler(async ({ type, id, extra }) => {
   }
 });
 
+/**
+ * Stream Handler
+ * Used to detect when user starts watching content
+ * We don't provide actual streams, but use this as a trigger for watch syncing
+ */
+builder.defineStreamHandler(async ({ type, id }) => {
+  console.log(`🎬 Stream request: type=${type}, id=${id}`);
+  
+  // Parse the ID to extract IMDB ID and episode info
+  const { imdbId, season, episode } = scrobbleService.parseStremioId(id);
+  
+  if (imdbId) {
+    // Mark as watched on Trakt (fire and forget)
+    scrobbleService.markAsWatched(imdbId, type, season, episode)
+      .catch(error => {
+        console.error('Error marking as watched:', error.message);
+      });
+  }
+  
+  // Return empty streams (we don't provide any streams)
+  return { streams: [] };
+});
+
 module.exports = builder.getInterface();
+
 

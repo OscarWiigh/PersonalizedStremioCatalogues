@@ -1,6 +1,7 @@
 const fetch = require('node-fetch');
 const { config } = require('../config');
 const cache = require('../utils/cache');
+const tokenManager = require('../utils/tokenManager');
 
 // Helper to get TMDB images and cast
 async function getTMDBData(tmdbId, type) {
@@ -42,11 +43,33 @@ async function getTMDBData(tmdbId, type) {
  * Fetches personalized recommendations from Trakt.tv
  */
 
-const TRAKT_HEADERS = {
-  'Content-Type': 'application/json',
-  'trakt-api-version': '2',
-  'trakt-api-key': config.trakt.clientId
-};
+/**
+ * Get Trakt headers with OAuth token
+ * @returns {Promise<object>} Headers object
+ */
+async function getTraktHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+    'trakt-api-version': '2'
+  };
+  
+  // Try to get OAuth token
+  const token = await tokenManager.getAccessToken();
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Also add client ID for API access (from stored tokens or env)
+  const tokens = tokenManager.loadTokens();
+  const clientId = tokens?.client_id || config.trakt.clientId;
+  
+  if (clientId) {
+    headers['trakt-api-key'] = clientId;
+  }
+  
+  return headers;
+}
 
 /**
  * Fetch recommendations for movies
@@ -61,23 +84,25 @@ async function getMovieRecommendations() {
   }
 
   try {
-    const username = config.trakt.username;
-    if (!username) {
-      console.warn('⚠️  Trakt username not configured, using trending instead');
+    // Check if user is authenticated
+    const isAuth = tokenManager.isAuthenticated();
+    if (!isAuth) {
+      console.warn('⚠️  Not authenticated with Trakt, using trending instead');
       return getTrendingMovies();
     }
 
-    console.log(`🔍 Fetching Trakt recommendations for user: ${username}`);
-    const url = `${config.trakt.apiUrl}/users/${username}/recommendations/movies?limit=50`;
+    console.log('🔍 Fetching personal Trakt movie recommendations...');
+    const url = `${config.trakt.apiUrl}/recommendations/movies?limit=50`;
+    const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
-    const response = await fetch(url, { headers: TRAKT_HEADERS });
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
       const errorText = await response.text();
       console.error(`Response: ${errorText}`);
-      if (response.status === 404) {
-        console.warn('⚠️  Trakt user not found, falling back to trending');
+      if (response.status === 401) {
+        console.warn('⚠️  Trakt token expired or invalid, falling back to trending');
         return getTrendingMovies();
       }
       throw new Error(`Trakt API error: ${response.status}`);
@@ -115,21 +140,23 @@ async function getSeriesRecommendations() {
   }
 
   try {
-    const username = config.trakt.username;
-    if (!username) {
-      console.warn('⚠️  Trakt username not configured, using trending instead');
+    // Check if user is authenticated
+    const isAuth = tokenManager.isAuthenticated();
+    if (!isAuth) {
+      console.warn('⚠️  Not authenticated with Trakt, using trending instead');
       return getTrendingSeries();
     }
 
-    console.log(`🔍 Fetching Trakt recommendations for user: ${username}`);
-    const url = `${config.trakt.apiUrl}/users/${username}/recommendations/shows?limit=50`;
+    console.log('🔍 Fetching personal Trakt series recommendations...');
+    const url = `${config.trakt.apiUrl}/recommendations/shows?limit=50`;
+    const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
-    const response = await fetch(url, { headers: TRAKT_HEADERS });
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
-      if (response.status === 404) {
-        console.warn('⚠️  Trakt user not found, falling back to trending');
+      if (response.status === 401) {
+        console.warn('⚠️  Trakt token expired or invalid, falling back to trending');
         return getTrendingSeries();
       }
       throw new Error(`Trakt API error: ${response.status}`);
@@ -169,7 +196,8 @@ async function getTrendingMovies() {
   try {
     console.log('🔍 Fetching Trakt trending movies...');
     const url = `${config.trakt.apiUrl}/movies/trending?limit=50`;
-    const response = await fetch(url, { headers: TRAKT_HEADERS });
+    const headers = await getTraktHeaders();
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.error(`❌ Trakt trending API error: ${response.status} ${response.statusText}`);
@@ -203,7 +231,8 @@ async function getTrendingSeries() {
   try {
     console.log('🔍 Fetching Trakt trending series...');
     const url = `${config.trakt.apiUrl}/shows/trending?limit=50`;
-    const response = await fetch(url, { headers: TRAKT_HEADERS });
+    const headers = await getTraktHeaders();
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.error(`❌ Trakt trending API error: ${response.status} ${response.statusText}`);

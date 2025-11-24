@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Success - Trakt Stremio Addon</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    .success-icon {
+      text-align: center;
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .addon-url-box {
+      background: #f8f9fa;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .addon-url-box h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .url-display {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #667eea;
+      word-break: break-all;
+      margin-bottom: 12px;
+    }
+    
+    .copy-button {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .copy-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .copy-button:active {
+      transform: translateY(0);
+    }
+    
+    .copy-button.copied {
+      background: #28a745;
+    }
+    
+    .instructions {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 25px;
+    }
+    
+    .instructions h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .instructions ol {
+      padding-left: 20px;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    
+    .instructions li {
+      margin-bottom: 8px;
+    }
+    
+    .features {
+      background: #e7f3ff;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .features h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .features ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .features li {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 8px;
+      padding-left: 24px;
+      position: relative;
+    }
+    
+    .features li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #28a745;
+      font-weight: bold;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .back-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">✅</div>
+    <h1>Authentication Successful!</h1>
+    <p class="subtitle">Your addon is ready to use</p>
+    
+    <div class="addon-url-box">
+      <h3>Your Addon URL:</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 12px;">Use this URL for both Stremio Web and Desktop:</p>
+      
+      <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
+      <button class="copy-button" onclick="installInStremio()" style="margin-bottom: 10px;">Install in Stremio</button>
+      <button class="copy-button" onclick="copyUrl()" style="background: #6c757d;">Copy URL (Manual)</button>
+    </div>
+    
+    <div class="instructions">
+      <h3>Installation:</h3>
+      <ol>
+        <li><strong>Click "Install in Stremio"</strong> button above (recommended)</li>
+        <li>Or copy the URL and paste it in your browser's address bar</li>
+        <li>Stremio will open automatically and prompt you to install</li>
+        <li><strong>Keep this server running</strong> while using Stremio!</li>
+      </ol>
+    </div>
+    
+    <div class="features">
+      <h3>What You Get:</h3>
+      <ul>
+        <li>Personal Trakt recommendations based on your watch history</li>
+        <li>Netflix Sweden Top 10 movies</li>
+        <li>New & Popular content from TMDB</li>
+        <li>Automatic watch syncing to Trakt when you watch in Stremio</li>
+      </ul>
+    </div>
+    
+    <div class="back-link">
+      <a href="/">← Back to Setup</a>
+    </div>
+  </div>
+  
+  <script>
+    function installInStremio() {
+      const urlElement = document.getElementById('addon-url');
+      const addonUrl = urlElement.textContent;
+      
+      // Open in Stremio using the stremio:// protocol
+      window.location.href = addonUrl;
+      
+      // Show feedback
+      const buttons = document.querySelectorAll('.copy-button');
+      buttons[0].textContent = 'Opening Stremio...';
+      buttons[0].classList.add('copied');
+      
+      setTimeout(() => {
+        buttons[0].textContent = 'Install in Stremio';
+        buttons[0].classList.remove('copied');
+      }, 3000);
+    }
+    
+    function copyUrl() {
+      const urlElement = document.getElementById('addon-url');
+      const buttons = document.querySelectorAll('.copy-button');
+      
+      // Create temporary textarea to copy from
+      const textarea = document.createElement('textarea');
+      textarea.value = urlElement.textContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      // Update button
+      buttons[1].textContent = 'Copied!';
+      buttons[1].classList.add('copied');
+      
+      setTimeout(() => {
+        buttons[1].textContent = 'Copy URL';
+        buttons[1].classList.remove('copied');
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
+

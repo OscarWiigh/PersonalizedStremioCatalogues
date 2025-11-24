@@ -2,9 +2,10 @@ require('dotenv').config();
 
 const config = {
   trakt: {
+    // Client ID and Secret are now provided via web UI during OAuth flow
+    // These env vars are optional and only needed if you want to pre-configure
     clientId: process.env.TRAKT_CLIENT_ID,
     clientSecret: process.env.TRAKT_CLIENT_SECRET,
-    username: process.env.TRAKT_USERNAME,
     apiUrl: 'https://api.trakt.tv'
   },
   tmdb: {
@@ -17,7 +18,7 @@ const config = {
     apiUrl: 'https://api.flixpatrol.com'
   },
   server: {
-    port: process.env.PORT || 7000
+    port: process.env.PORT || 8000
   },
   cache: {
     traktTTL: 6 * 60 * 60 * 1000, // 6 hours
@@ -29,7 +30,6 @@ const config = {
 // Validate required configuration
 function validateConfig() {
   const required = [
-    { key: 'TRAKT_CLIENT_ID', value: config.trakt.clientId },
     { key: 'TMDB_API_KEY', value: config.tmdb.apiKey }
   ];
 
@@ -38,16 +38,14 @@ function validateConfig() {
   if (missing.length > 0) {
     console.warn('⚠️  Missing required environment variables:');
     missing.forEach(({ key }) => console.warn(`   - ${key}`));
-    console.warn('Please copy .env.example to .env and fill in your API keys.');
-  }
-
-  if (!config.trakt.username) {
-    console.warn('⚠️  TRAKT_USERNAME not set. Trakt recommendations will not work.');
+    console.warn('Please copy env.template to .env and fill in your API keys.');
   }
 
   if (!config.flixpatrol.apiKey) {
-    console.warn('ℹ️  FLIXPATROL_API_KEY not set. Will use alternative method for Netflix Top 10.');
+    console.warn('ℹ️  FLIXPATROL_API_KEY not set. Will use Netflix official API for Top 10.');
   }
+  
+  console.log('ℹ️  Trakt authentication is handled via OAuth web interface');
 }
 
 module.exports = { config, validateConfig };

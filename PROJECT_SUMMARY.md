@@ -50,7 +50,7 @@ Your Stremio catalog add-on has been successfully built and is ready to use!
    - HTTP server using Stremio SDK
    - Clear startup messages
    - Graceful shutdown handling
-   - Runs on port 7000 (configurable)
+   - Runs on port 8000 (configurable)
 
 ### Documentation
 
@@ -106,7 +106,7 @@ Your Stremio catalog add-on has been successfully built and is ready to use!
 5. **Install in Stremio**
    - Open Stremio
    - Go to Add-ons
-   - Install from: `http://localhost:7000/manifest.json`
+   - Install from: `http://localhost:8000/manifest.json`
 
 ## 🛠️ Technical Details
 
@@ -166,7 +166,7 @@ Your Stremio catalog add-on has been successfully built and is ready to use!
 If you encounter issues:
 
 1. Check that all required API keys are in `.env`
-2. Verify the server is running on port 7000
+2. Verify the server is running on port 8000
 3. Look at console logs for specific error messages
 4. See README.md for detailed troubleshooting
 

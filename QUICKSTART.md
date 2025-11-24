@@ -39,7 +39,7 @@ npm start
 1. Open Stremio app
 2. Go to Add-ons (🧩 icon)
 3. Scroll to "Community Add-ons"
-4. Paste: `http://localhost:7000/manifest.json`
+4. Paste: `http://localhost:8000/manifest.json`
 5. Click Install
 
 ## 5. Enjoy!
