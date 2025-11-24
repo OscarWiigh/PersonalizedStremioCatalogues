@@ -83,8 +83,9 @@ async function handleCatalogRequest(req, res) {
     }
   }
   
-  // Create args for catalog handler
-  const args = {
+  // Create request object for the addon interface
+  const request = {
+    resource: 'catalog',
     type,
     id,
     extra: extraObj,
@@ -95,8 +96,8 @@ async function handleCatalogRequest(req, res) {
   };
   
   try {
-    // Call the catalog handler directly from the interface
-    const result = await addon.interface.catalog(args);
+    // Call the get method from the interface
+    const result = await addon.interface.get(request);
     res.json(result);
   } catch (error) {
     console.error(`❌ Error serving catalog:`, error);
@@ -117,7 +118,8 @@ app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
     return res.status(404).json({ streams: [] });
   }
   
-  const args = {
+  const request = {
+    resource: 'stream',
     type,
     id,
     config: {
@@ -127,7 +129,7 @@ app.get('/:sessionId/stream/:type/:id.json', async (req, res) => {
   };
   
   try {
-    const result = await addon.interface.stream(args);
+    const result = await addon.interface.get(request);
     res.json(result);
   } catch (error) {
     console.error(`❌ Error serving stream:`, error);
