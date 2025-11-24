@@ -1,0 +1,270 @@
+const fetch = require('node-fetch');
+const { config } = require('../config');
+const cache = require('../utils/cache');
+
+// Helper to get TMDB images and cast
+async function getTMDBData(tmdbId, type) {
+  if (!tmdbId || !config.tmdb.apiKey) {
+    return null;
+  }
+  
+  try {
+    const endpoint = type === 'movie' ? 'movie' : 'tv';
+    const url = `${config.tmdb.apiUrl}/${endpoint}/${tmdbId}?api_key=${config.tmdb.apiKey}&append_to_response=credits`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Extract cast (top 10 actors)
+    let cast = [];
+    if (data.credits && data.credits.cast) {
+      cast = data.credits.cast
+        .slice(0, 10)
+        .map(actor => actor.name);
+    }
+    
+    return {
+      poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w500${data.poster_path}` : null,
+      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${data.backdrop_path}` : null,
+      cast: cast
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Trakt Service
+ * Fetches personalized recommendations from Trakt.tv
+ */
+
+const TRAKT_HEADERS = {
+  'Content-Type': 'application/json',
+  'trakt-api-version': '2',
+  'trakt-api-key': config.trakt.clientId
+};
+
+/**
+ * Fetch recommendations for movies
+ * @returns {Promise<Array>} Array of movie metadata
+ */
+async function getMovieRecommendations() {
+  const cacheKey = 'trakt:movies:recommendations';
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const username = config.trakt.username;
+    if (!username) {
+      console.warn('⚠️  Trakt username not configured, using trending instead');
+      return getTrendingMovies();
+    }
+
+    console.log(`🔍 Fetching Trakt recommendations for user: ${username}`);
+    const url = `${config.trakt.apiUrl}/users/${username}/recommendations/movies?limit=50`;
+    console.log(`📡 Trakt URL: ${url}`);
+    const response = await fetch(url, { headers: TRAKT_HEADERS });
+
+    if (!response.ok) {
+      console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`Response: ${errorText}`);
+      if (response.status === 404) {
+        console.warn('⚠️  Trakt user not found, falling back to trending');
+        return getTrendingMovies();
+      }
+      throw new Error(`Trakt API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Trakt returned ${data.length} movie recommendations`);
+    
+    // If no recommendations, fall back to trending
+    if (data.length === 0) {
+      console.warn('⚠️  No personal recommendations found, using trending movies');
+      return getTrendingMovies();
+    }
+    
+    const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'movie')));
+    
+    cache.set(cacheKey, metas, config.cache.traktTTL);
+    return metas;
+  } catch (error) {
+    console.error('Error fetching Trakt movie recommendations:', error.message);
+    return getTrendingMovies(); // Fallback to trending
+  }
+}
+
+/**
+ * Fetch recommendations for series
+ * @returns {Promise<Array>} Array of series metadata
+ */
+async function getSeriesRecommendations() {
+  const cacheKey = 'trakt:series:recommendations';
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const username = config.trakt.username;
+    if (!username) {
+      console.warn('⚠️  Trakt username not configured, using trending instead');
+      return getTrendingSeries();
+    }
+
+    console.log(`🔍 Fetching Trakt recommendations for user: ${username}`);
+    const url = `${config.trakt.apiUrl}/users/${username}/recommendations/shows?limit=50`;
+    console.log(`📡 Trakt URL: ${url}`);
+    const response = await fetch(url, { headers: TRAKT_HEADERS });
+
+    if (!response.ok) {
+      console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
+      if (response.status === 404) {
+        console.warn('⚠️  Trakt user not found, falling back to trending');
+        return getTrendingSeries();
+      }
+      throw new Error(`Trakt API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Trakt returned ${data.length} series recommendations`);
+    
+    // If no recommendations, fall back to trending
+    if (data.length === 0) {
+      console.warn('⚠️  No personal recommendations found, using trending series');
+      return getTrendingSeries();
+    }
+    
+    const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'series')));
+    
+    cache.set(cacheKey, metas, config.cache.traktTTL);
+    return metas;
+  } catch (error) {
+    console.error('Error fetching Trakt series recommendations:', error.message);
+    return getTrendingSeries(); // Fallback to trending
+  }
+}
+
+/**
+ * Fetch trending movies as fallback
+ * @returns {Promise<Array>} Array of movie metadata
+ */
+async function getTrendingMovies() {
+  const cacheKey = 'trakt:movies:trending';
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    console.log('🔍 Fetching Trakt trending movies...');
+    const url = `${config.trakt.apiUrl}/movies/trending?limit=50`;
+    const response = await fetch(url, { headers: TRAKT_HEADERS });
+
+    if (!response.ok) {
+      console.error(`❌ Trakt trending API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Trakt API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Trakt returned ${data.length} trending movies`);
+    const metas = await Promise.all(data.map(item => mapTraktToMeta(item.movie, 'movie')));
+    
+    cache.set(cacheKey, metas, config.cache.traktTTL);
+    return metas;
+  } catch (error) {
+    console.error('❌ Error fetching Trakt trending movies:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Fetch trending series as fallback
+ * @returns {Promise<Array>} Array of series metadata
+ */
+async function getTrendingSeries() {
+  const cacheKey = 'trakt:series:trending';
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    console.log('🔍 Fetching Trakt trending series...');
+    const url = `${config.trakt.apiUrl}/shows/trending?limit=50`;
+    const response = await fetch(url, { headers: TRAKT_HEADERS });
+
+    if (!response.ok) {
+      console.error(`❌ Trakt trending API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Trakt API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Trakt returned ${data.length} trending series`);
+    const metas = await Promise.all(data.map(item => mapTraktToMeta(item.show, 'series')));
+    
+    cache.set(cacheKey, metas, config.cache.traktTTL);
+    return metas;
+  } catch (error) {
+    console.error('❌ Error fetching Trakt trending series:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Map Trakt data to Stremio meta format
+ * @param {object} item - Trakt item
+ * @param {string} type - Content type (movie/series)
+ * @returns {object} Stremio meta object
+ */
+async function mapTraktToMeta(item, type) {
+  const meta = {
+    id: `trakt:${item.ids.trakt}`,
+    type: type,
+    name: item.title,
+    description: item.overview || '',
+    releaseInfo: item.year ? item.year.toString() : '',
+    imdbRating: item.rating ? item.rating.toFixed(1) : undefined,
+  };
+
+  // Get images and cast from TMDB if available
+  if (item.ids && item.ids.tmdb) {
+    const tmdbData = await getTMDBData(item.ids.tmdb, type);
+    if (tmdbData) {
+      meta.poster = tmdbData.poster;
+      meta.background = tmdbData.background;
+      if (tmdbData.cast && tmdbData.cast.length > 0) {
+        meta.cast = tmdbData.cast;
+      }
+    }
+  }
+
+  // Use IMDB ID as primary if available
+  if (item.ids && item.ids.imdb) {
+    meta.id = item.ids.imdb;
+  }
+
+  // Add genres if available
+  if (item.genres && item.genres.length > 0) {
+    meta.genres = item.genres;
+  }
+
+  return meta;
+}
+
+module.exports = {
+  getMovieRecommendations,
+  getSeriesRecommendations
+};
+
