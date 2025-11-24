@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configure Personal Catalog Addon</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .info-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+    
+    .info-box p {
+      color: #856404;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      color: #333;
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      transition: border-color 0.3s;
+    }
+    
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .help-text {
+      color: #666;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+    
+    .error {
+      color: #dc3545;
+      font-size: 13px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Configure Addon</h1>
+    <p class="subtitle">Enter your session ID to enable personal recommendations</p>
+    
+    <div class="info-box">
+      <p>
+        <strong>📋 Where to find your Session ID:</strong><br>
+        After authenticating with Trakt, you received a unique Session ID. 
+        Paste it below to link this addon to your Trakt account.
+      </p>
+    </div>
+    
+    <form id="config-form">
+      <div class="form-group">
+        <label for="session">Session ID:</label>
+        <input 
+          type="text" 
+          id="session" 
+          name="session" 
+          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          required
+        >
+        <p class="help-text">
+          Paste your session ID from the authentication page
+        </p>
+      </div>
+      
+      <button type="submit" id="install-button">
+        Install Addon
+      </button>
+      
+      <p class="error" id="error-message"></p>
+    </form>
+  </div>
+  
+  <script>
+    const form = document.getElementById('config-form');
+    const sessionInput = document.getElementById('session');
+    const installButton = document.getElementById('install-button');
+    const errorMessage = document.getElementById('error-message');
+    
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const session = sessionInput.value.trim();
+      
+      // Validate UUID format
+      const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+      if (!uuidRegex.test(session)) {
+        errorMessage.textContent = 'Invalid session ID format. Please check and try again.';
+        errorMessage.style.display = 'block';
+        return;
+      }
+      
+      errorMessage.style.display = 'none';
+      installButton.disabled = true;
+      installButton.textContent = 'Installing...';
+      
+      // Encode config as JSON and base64
+      const config = { session };
+      const configJson = JSON.stringify(config);
+      const configEncoded = btoa(configJson);
+      
+      // Redirect to configured manifest URL
+      // Stremio SDK expects: /[base64-encoded-config]/manifest.json
+      const manifestUrl = `/${configEncoded}/manifest.json`;
+      const stremioUrl = `stremio://${window.location.host}${manifestUrl}`;
+      
+      // Try to open in Stremio
+      window.location.href = stremioUrl;
+      
+      // Reset button after a delay
+      setTimeout(() => {
+        installButton.disabled = false;
+        installButton.textContent = 'Install Addon';
+      }, 3000);
+    });
+  </script>
+</body>
+</html>
+

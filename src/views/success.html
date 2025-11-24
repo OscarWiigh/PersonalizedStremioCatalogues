@@ -334,9 +334,9 @@
     <p class="subtitle">Your addon is ready to use</p>
     
     <div class="addon-url-box">
-      <h3>Your Personalized Addon URL:</h3>
+      <h3>Step 1: Install the Addon</h3>
       <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Click to install or copy the URL for both Stremio Web and Desktop:
+        Click to install in Stremio (works for both Web and Desktop):
       </p>
       
       <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
@@ -346,23 +346,32 @@
       <button class="copy-button" onclick="copyUrl()" style="background: #6c757d;">
         📋 Copy URL
       </button>
-      
-      <p style="color: #28a745; font-size: 13px; margin-top: 12px; font-weight: 500;">
-        ✅ Your session is pre-configured in this URL - just click install!
+    </div>
+    
+    <div class="addon-url-box" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+      <h3>Step 2: Paste Your Session ID</h3>
+      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
+        <strong>⚠️ Important:</strong> After installing, Stremio will show a configuration screen. Copy and paste this Session ID:
       </p>
+      
+      <div class="url-display" id="session-id" style="font-family: 'Courier New', monospace; font-size: 13px; background: #fff; word-break: break-all;">SESSION_ID_HERE</div>
+      <button class="copy-button" onclick="copySessionId()" style="background: #28a745;">
+        📋 Copy Session ID
+      </button>
     </div>
     
     <div class="instructions">
-      <h3>Installation Steps:</h3>
+      <h3>Complete Setup Guide:</h3>
       <ol>
-        <li><strong>Click "Install in Stremio"</strong> button above (recommended)</li>
-        <li>Stremio will open and prompt you to install the addon</li>
-        <li>Click "Install" in Stremio</li>
-        <li>Done! Your personal recommendations will appear automatically</li>
+        <li><strong>Click "Install in Stremio"</strong> button above</li>
+        <li>Stremio will open and show a <strong>configuration screen</strong></li>
+        <li><strong>Paste your Session ID</strong> from the yellow box into the "Session ID" field in Stremio</li>
+        <li>Click <strong>"Install"</strong> in Stremio</li>
+        <li>✅ Done! Your personal Trakt recommendations will now appear</li>
       </ol>
       
       <p style="color: #666; font-size: 13px; margin-top: 15px;">
-        💡 <strong>Tip:</strong> This URL is unique to your Trakt account. Don't share it with others!
+        💡 <strong>Tip:</strong> Keep your Session ID private - it links this addon to your Trakt account!
       </p>
     </div>
     
@@ -449,6 +458,28 @@
       setTimeout(() => {
         buttons[1].textContent = '📋 Copy URL';
         buttons[1].classList.remove('copied');
+      }, 2000);
+    }
+    
+    function copySessionId() {
+      const sessionElement = document.getElementById('session-id');
+      const button = event.target;
+      
+      // Create temporary textarea to copy from
+      const textarea = document.createElement('textarea');
+      textarea.value = sessionElement.textContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      // Update button
+      button.textContent = '✓ Copied!';
+      button.classList.add('copied');
+      
+      setTimeout(() => {
+        button.textContent = '📋 Copy Session ID';
+        button.classList.remove('copied');
       }, 2000);
     }
     

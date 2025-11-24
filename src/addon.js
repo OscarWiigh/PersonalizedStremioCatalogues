@@ -15,10 +15,24 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personal Catalog',
-  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content',
+  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content. Paste your session ID after authentication.',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
+  
+  behaviorHints: {
+    configurable: true,
+    configurationRequired: false
+  },
+  
+  config: [
+    {
+      key: 'session',
+      type: 'text',
+      title: 'Session ID',
+      required: true
+    }
+  ],
   
   catalogs: [
     // Your Personal Recommendations Catalog
