@@ -84,12 +84,18 @@ const builder = new addonBuilder(manifest);
  */
 function extractSession(args) {
   try {
+    // Debug: log what we're receiving
+    console.log('🔍 extractSession - args.config:', JSON.stringify(args.config));
+    
     // Session is provided via userConfig in args.config.session
     if (args.config && args.config.session) {
+      console.log(`✅ Found session: ${args.config.session.substring(0, 8)}...`);
       return args.config.session;
     }
+    
+    console.log('⚠️  No session found in args.config');
   } catch (error) {
-    console.log('ℹ️  Could not extract session from request');
+    console.log('❌ Error extracting session:', error.message);
   }
   
   return null;

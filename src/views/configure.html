@@ -185,18 +185,26 @@
       installButton.disabled = true;
       installButton.textContent = 'Installing...';
       
-      // Encode config as JSON and base64
+      // Encode config as JSON and base64url (Stremio SDK format)
       const config = { session };
       const configJson = JSON.stringify(config);
-      const configEncoded = btoa(configJson);
       
-      // Redirect to configured manifest URL
-      // Stremio SDK expects: /[base64-encoded-config]/manifest.json
-      const manifestUrl = `/${configEncoded}/manifest.json`;
-      const stremioUrl = `stremio://${window.location.host}${manifestUrl}`;
+      // Use base64url encoding (URL-safe base64)
+      const configBase64 = btoa(configJson)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
       
-      // Try to open in Stremio
-      window.location.href = stremioUrl;
+      // Build the configured manifest URL
+      // Stremio SDK expects: /[base64url-config]/manifest.json
+      const protocol = window.location.protocol.replace('http', 'stremio');
+      const manifestUrl = `${protocol}//${window.location.host}/${configBase64}/manifest.json`;
+      
+      console.log('Installing with config:', config);
+      console.log('Manifest URL:', manifestUrl);
+      
+      // Open in Stremio
+      window.location.href = manifestUrl;
       
       // Reset button after a delay
       setTimeout(() => {
