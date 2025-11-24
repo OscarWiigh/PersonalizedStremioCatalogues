@@ -177,6 +177,154 @@
     .back-link a:hover {
       text-decoration: underline;
     }
+    
+    /* Netflix Import Styles */
+    .import-section {
+      background: #fff8e1;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 25px 0;
+    }
+    
+    .import-section h3 {
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    
+    .import-section p {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+      margin-bottom: 15px;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+      display: none;
+    }
+    
+    .file-label {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      width: 100%;
+    }
+    
+    .file-label:hover {
+      border-color: #667eea;
+      background: #f8f9fa;
+    }
+    
+    .file-label.has-file {
+      border-color: #28a745;
+      background: #d4edda;
+      border-style: solid;
+    }
+    
+    .import-button {
+      width: 100%;
+      background: #ffc107;
+      color: #333;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .import-button:hover:not(:disabled) {
+      background: #ffb300;
+      transform: translateY(-1px);
+    }
+    
+    .import-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .progress-bar {
+      display: none;
+      background: #f0f0f0;
+      border-radius: 10px;
+      height: 20px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .progress-status {
+      display: none;
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 40px;
+      line-height: 1.4;
+    }
+    
+    .import-results {
+      display: none;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    
+    .import-results.error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+    }
+    
+    .import-results h4 {
+      color: #155724;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    
+    .import-results.error h4 {
+      color: #721c24;
+    }
+    
+    .import-results ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .import-results li {
+      color: #155724;
+      font-size: 14px;
+      padding: 5px 0;
+    }
+    
+    .import-results.error li {
+      color: #721c24;
+    }
   </style>
 </head>
 <body>
@@ -200,7 +348,6 @@
         <li><strong>Click "Install in Stremio"</strong> button above (recommended)</li>
         <li>Or copy the URL and paste it in your browser's address bar</li>
         <li>Stremio will open automatically and prompt you to install</li>
-        <li><strong>Keep this server running</strong> while using Stremio!</li>
       </ol>
     </div>
     
@@ -214,12 +361,42 @@
       </ul>
     </div>
     
+    <div class="import-section">
+      <h3>📥 Import Netflix Watch History</h3>
+      <p>Already have Netflix viewing history? Import it to get personalized Trakt recommendations instantly!</p>
+      
+      <div class="file-input-wrapper">
+        <input type="file" id="netflix-csv" accept=".csv" onchange="handleFileSelect(event)">
+        <label for="netflix-csv" class="file-label" id="file-label">
+          📄 Choose Netflix CSV File
+        </label>
+      </div>
+      
+      <button class="import-button" id="import-button" onclick="startImport()" disabled>
+        Import to Trakt
+      </button>
+      
+      <div class="progress-bar" id="progress-bar">
+        <div class="progress-fill" id="progress-fill">0%</div>
+      </div>
+      
+      <div class="progress-status" id="progress-status"></div>
+      
+      <div class="import-results" id="import-results"></div>
+      
+      <p style="font-size: 12px; color: #999; margin-top: 15px;">
+        💡 Get your Netflix history: Netflix → Account → Viewing Activity → Download All
+      </p>
+    </div>
+    
     <div class="back-link">
       <a href="/">← Back to Setup</a>
     </div>
   </div>
   
   <script>
+    let selectedFile = null;
+    
     function installInStremio() {
       const urlElement = document.getElementById('addon-url');
       const addonUrl = urlElement.textContent;
@@ -258,6 +435,178 @@
         buttons[1].textContent = 'Copy URL';
         buttons[1].classList.remove('copied');
       }, 2000);
+    }
+    
+    // Netflix CSV Import Functions
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      const label = document.getElementById('file-label');
+      const button = document.getElementById('import-button');
+      
+      if (file) {
+        if (!file.name.endsWith('.csv')) {
+          alert('Please select a CSV file');
+          return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+          alert('File too large. Maximum size is 5MB');
+          return;
+        }
+        
+        selectedFile = file;
+        label.textContent = `✓ ${file.name}`;
+        label.classList.add('has-file');
+        button.disabled = false;
+      } else {
+        selectedFile = null;
+        label.textContent = '📄 Choose Netflix CSV File';
+        label.classList.remove('has-file');
+        button.disabled = true;
+      }
+    }
+    
+    async function startImport() {
+      if (!selectedFile) {
+        alert('Please select a file first');
+        return;
+      }
+      
+      const button = document.getElementById('import-button');
+      const progressBar = document.getElementById('progress-bar');
+      const progressFill = document.getElementById('progress-fill');
+      const progressStatus = document.getElementById('progress-status');
+      const resultsDiv = document.getElementById('import-results');
+      
+      // Reset UI
+      button.disabled = true;
+      progressBar.style.display = 'block';
+      progressStatus.style.display = 'block';
+      resultsDiv.style.display = 'none';
+      resultsDiv.className = 'import-results';
+      
+      // Generate unique session ID
+      const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      
+      // Set up SSE connection for real-time progress
+      const eventSource = new EventSource(`/api/import-netflix/progress/${sessionId}`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'parsing') {
+            progressStatus.textContent = data.message;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'parsed') {
+            progressStatus.textContent = data.message;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'matching') {
+            progressStatus.textContent = `${data.message} - ${data.title || ''}`;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'matched') {
+            progressStatus.textContent = data.message;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'syncing_start') {
+            progressStatus.textContent = data.message;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'syncing') {
+            progressStatus.textContent = data.message;
+            progressFill.style.width = data.progress + '%';
+            progressFill.textContent = data.progress + '%';
+          } else if (data.type === 'complete') {
+            progressFill.style.width = '100%';
+            progressFill.textContent = '100%';
+            progressStatus.textContent = data.message;
+          } else if (data.type === 'error') {
+            progressStatus.textContent = 'Error: ' + data.message;
+          }
+        } catch (err) {
+          console.error('Error parsing SSE data:', err);
+        }
+      };
+      
+      eventSource.onerror = () => {
+        eventSource.close();
+      };
+      
+      try {
+        // Read CSV file
+        progressStatus.textContent = 'Reading CSV file...';
+        progressFill.style.width = '2%';
+        progressFill.textContent = '2%';
+        
+        const csvText = await selectedFile.text();
+        
+        // Send to server with session ID
+        const response = await fetch('/api/import-netflix', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            csvData: csvText,
+            sessionId: sessionId
+          })
+        });
+        
+        const result = await response.json();
+        
+        // Close SSE connection
+        eventSource.close();
+        
+        // Show results
+        setTimeout(() => {
+          progressBar.style.display = 'none';
+          progressStatus.style.display = 'none';
+          
+          resultsDiv.style.display = 'block';
+          
+          if (result.success) {
+            resultsDiv.innerHTML = `
+              <h4>✅ Import Complete!</h4>
+              <ul>
+                <li><strong>${result.matched}</strong> titles matched</li>
+                <li><strong>${result.synced}</strong> synced to Trakt</li>
+                <li><strong>${result.skipped}</strong> skipped (couldn't match)</li>
+                ${result.failed ? `<li><strong>${result.failed}</strong> failed to sync</li>` : ''}
+              </ul>
+            `;
+          } else {
+            resultsDiv.classList.add('error');
+            resultsDiv.innerHTML = `
+              <h4>❌ Import Failed</h4>
+              <ul>
+                <li>${result.error || 'Unknown error occurred'}</li>
+                ${result.matched ? `<li>${result.matched} titles were matched</li>` : ''}
+              </ul>
+            `;
+          }
+          
+          button.disabled = false;
+        }, 500);
+        
+      } catch (error) {
+        eventSource.close();
+        progressBar.style.display = 'none';
+        progressStatus.style.display = 'none';
+        
+        resultsDiv.style.display = 'block';
+        resultsDiv.classList.add('error');
+        resultsDiv.innerHTML = `
+          <h4>❌ Error</h4>
+          <ul>
+            <li>${error.message}</li>
+          </ul>
+        `;
+        
+        button.disabled = false;
+      }
     }
   </script>
 </body>

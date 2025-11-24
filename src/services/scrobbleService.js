@@ -143,8 +143,177 @@ function parseStremioId(id) {
   };
 }
 
+/**
+ * Bulk mark items as watched on Trakt
+ * @param {array} items - Array of {imdbId, type, watchedAt} objects
+ * @param {function} progressCallback - Optional callback for progress updates
+ * @returns {Promise<object>} Sync results
+ */
+async function bulkMarkAsWatched(items, progressCallback = null) {
+  try {
+    // Check authentication
+    const isAuth = tokenManager.isAuthenticated();
+    if (!isAuth) {
+      console.log('ℹ️  Not authenticated, skipping bulk sync');
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const token = await tokenManager.getAccessToken();
+    if (!token) {
+      console.log('ℹ️  No valid token, skipping bulk sync');
+      return { success: false, error: 'No valid token' };
+    }
+
+    const tokens = tokenManager.loadTokens();
+    const clientId = tokens?.client_id;
+    
+    if (!clientId) {
+      console.error('❌ No client ID found, cannot sync to Trakt');
+      return { success: false, error: 'No client ID' };
+    }
+
+    // Separate movies and shows
+    const movies = [];
+    const shows = [];
+    
+    for (const item of items) {
+      const entry = {
+        ids: { imdb: item.imdbId }
+      };
+      
+      if (item.watchedAt) {
+        entry.watched_at = item.watchedAt;
+      }
+      
+      if (item.type === 'movie') {
+        movies.push(entry);
+      } else if (item.type === 'series') {
+        shows.push(entry);
+      }
+    }
+
+    console.log(`📦 Bulk syncing ${movies.length} movies and ${shows.length} shows to Trakt...`);
+
+    // Trakt API recommends batches of 100 items max
+    const batchSize = 100;
+    let totalSynced = 0;
+    let totalFailed = 0;
+    
+    // Batch movies
+    for (let i = 0; i < movies.length; i += batchSize) {
+      const batch = movies.slice(i, i + batchSize);
+      
+      if (progressCallback) {
+        progressCallback({
+          phase: 'syncing',
+          current: i + batch.length,
+          total: movies.length + shows.length,
+          type: 'movies'
+        });
+      }
+      
+      const result = await syncBatch({ movies: batch }, token, clientId);
+      
+      if (result.success) {
+        totalSynced += result.added;
+      } else {
+        totalFailed += batch.length;
+      }
+      
+      // Small delay between batches
+      if (i + batchSize < movies.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    // Batch shows
+    for (let i = 0; i < shows.length; i += batchSize) {
+      const batch = shows.slice(i, i + batchSize);
+      
+      if (progressCallback) {
+        progressCallback({
+          phase: 'syncing',
+          current: movies.length + i + batch.length,
+          total: movies.length + shows.length,
+          type: 'shows'
+        });
+      }
+      
+      const result = await syncBatch({ shows: batch }, token, clientId);
+      
+      if (result.success) {
+        totalSynced += result.added;
+      } else {
+        totalFailed += batch.length;
+      }
+      
+      // Small delay between batches
+      if (i + batchSize < shows.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log(`✅ Bulk sync complete: ${totalSynced} synced, ${totalFailed} failed`);
+
+    return {
+      success: true,
+      synced: totalSynced,
+      failed: totalFailed,
+      total: items.length
+    };
+  } catch (error) {
+    console.error('❌ Error in bulk sync:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Sync a single batch to Trakt
+ * @param {object} syncData - Sync data with movies and/or shows
+ * @param {string} token - OAuth token
+ * @param {string} clientId - Trakt client ID
+ * @returns {Promise<object>} Result
+ */
+async function syncBatch(syncData, token, clientId) {
+  try {
+    const response = await fetch('https://api.trakt.tv/sync/history', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'trakt-api-version': '2',
+        'trakt-api-key': clientId,
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(syncData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Batch sync failed: ${response.status} ${response.statusText}`);
+      console.error(`Response: ${errorText}`);
+      return { success: false, added: 0 };
+    }
+
+    const result = await response.json();
+    const moviesAdded = result.added?.movies || 0;
+    const showsAdded = result.added?.shows || 0;
+    
+    return {
+      success: true,
+      added: moviesAdded + showsAdded
+    };
+  } catch (error) {
+    console.error('❌ Batch sync error:', error.message);
+    return { success: false, added: 0 };
+  }
+}
+
 module.exports = {
   markAsWatched,
-  parseStremioId
+  parseStremioId,
+  bulkMarkAsWatched
 };
 

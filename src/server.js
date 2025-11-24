@@ -8,6 +8,7 @@ const { getRouter } = require('stremio-addon-sdk');
 const { config, validateConfig } = require('./config');
 const addonInterface = require('./addon');
 const oauthRouter = require('./routes/oauth');
+const importRouter = require('./routes/import');
 const tokenManager = require('./utils/tokenManager');
 
 /**
@@ -29,12 +30,15 @@ const port = config.server.port;
 
 // Middleware
 app.use(cors()); // Enable CORS for Stremio
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(bodyParser.json({ limit: '10mb' })); // Increased limit for Netflix CSV uploads
 app.use(cookieParser());
 
 // Mount OAuth routes (web interface)
 app.use('/', oauthRouter);
+
+// Mount import API routes
+app.use('/', importRouter);
 
 // Mount Stremio addon routes
 const addonRouter = getRouter(addonInterface);
@@ -49,18 +53,23 @@ app.listen(port, '0.0.0.0', async () => {
   
   // Get local IP address for Stremio desktop
   const os = require('os');
-  const networkInterfaces = os.networkInterfaces();
   let localIP = 'localhost';
   
-  for (const interfaceName in networkInterfaces) {
-    const addresses = networkInterfaces[interfaceName];
-    for (const addr of addresses) {
-      if (addr.family === 'IPv4' && !addr.internal) {
-        localIP = addr.address;
-        break;
+  try {
+    const networkInterfaces = os.networkInterfaces();
+    for (const interfaceName in networkInterfaces) {
+      const addresses = networkInterfaces[interfaceName];
+      for (const addr of addresses) {
+        if (addr.family === 'IPv4' && !addr.internal) {
+          localIP = addr.address;
+          break;
+        }
       }
+      if (localIP !== 'localhost') break;
     }
-    if (localIP !== 'localhost') break;
+  } catch (error) {
+    // Ignore errors getting network interfaces (can happen in sandboxed environments)
+    console.log('ℹ️  Could not determine local IP address');
   }
   
   console.log(`📍 Web Interface (OAuth Setup): http://localhost:${port}`);
