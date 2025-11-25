@@ -64,8 +64,8 @@ app.use('/', oauthRouter);
 app.use('/', importRouter);
 
 // Session-aware routing middleware for path-based sessions
-// Captures /u/:session/* routes, validates session, attaches to request, and strips prefix
-app.use('/u/:session/*', async (req, res, next) => {
+// Captures /u/:session routes, validates session, attaches to request, and strips prefix
+app.use('/u/:session', async (req, res, next) => {
   const sessionId = req.params.session;
   const sessionManager = require('./utils/sessionManager');
   
