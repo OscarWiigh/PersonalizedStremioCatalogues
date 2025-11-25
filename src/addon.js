@@ -64,14 +64,20 @@ const builder = new addonBuilder(manifest);
 
 /**
  * Extract session ID from request
- * Session is attached to the request object by Express middleware
+ * Session is attached to the request object by Express middleware or available in params
  * @param {object} args - Request args from Stremio
  * @returns {string|null} Session ID
  */
 function extractSession(args) {
   try {
-    // Session is stashed on the request object by our middleware
-    const sessionId = args.req?.sessionId;
+    // First try to get from middleware-attached sessionId
+    let sessionId = args.req?.sessionId;
+    
+    // Fallback to Express route params (when mounted at /u/:session)
+    if (!sessionId && args.req?.params?.session) {
+      sessionId = args.req.params.session;
+    }
+    
     if (sessionId) {
       console.log(`✅ Found session: ${sessionId.substring(0, 8)}...`);
       return sessionId;
