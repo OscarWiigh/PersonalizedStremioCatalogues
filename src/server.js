@@ -63,13 +63,42 @@ app.use('/', oauthRouter);
 // Mount import API routes
 app.use('/', importRouter);
 
-// Configure endpoint - serves the configuration page
-app.get('/configure', (req, res) => {
-  console.log('📝 Serving configuration page');
-  res.sendFile(path.join(__dirname, 'views/configure.html'));
+// Session-aware routing middleware for path-based sessions
+// Captures /u/:session/* routes, validates session, attaches to request, and strips prefix
+app.use('/u/:session/*', async (req, res, next) => {
+  const sessionId = req.params.session;
+  const sessionManager = require('./utils/sessionManager');
+  
+  console.log(`🔐 Session middleware: ${sessionId.substring(0, 8)}...`);
+  
+  // Validate UUID format
+  const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  if (!uuidRegex.test(sessionId)) {
+    console.warn('❌ Invalid session ID format');
+    return res.status(400).json({ error: 'Invalid session ID format' });
+  }
+  
+  // Verify session exists
+  const isValid = await sessionManager.isValidSession(sessionId);
+  if (!isValid) {
+    console.warn('❌ Invalid or expired session');
+    return res.status(401).json({ error: 'Invalid or expired session' });
+  }
+  
+  // Stash session on request for addon handlers to access
+  req.sessionId = sessionId;
+  console.log(`✅ Session validated, attached to request`);
+  
+  // Strip /u/:session prefix from URL so SDK router can match paths
+  req.url = req.url.replace(/^\/u\/[^\/]+/, '');
+  req.originalUrl = req.url;
+  
+  console.log(`🔀 Rewritten URL: ${req.url}`);
+  
+  next();
 });
 
-// Mount default Stremio addon routes with config support
+// Mount default Stremio addon routes
 const addonRouter = getRouter(addonInterface);
 app.use('/', addonRouter);
 

@@ -233,14 +233,13 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Create addon URL (user will configure session ID manually in Stremio)
-  const manifestUrl = `${baseUrl}/manifest.json`;
+  // Create path-based addon URL with embedded session
+  const manifestUrl = `${baseUrl}/u/${session}/manifest.json`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
-  // Replace URLs and inject session ID for user to copy
+  // Replace URLs in the success page
   html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
   html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
-  html = html.replace(/SESSION_ID_HERE/g, session);
   
   res.send(html);
 });

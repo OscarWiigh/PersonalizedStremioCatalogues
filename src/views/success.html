@@ -334,9 +334,9 @@
     <p class="subtitle">Your addon is ready to use</p>
     
     <div class="addon-url-box">
-      <h3>Step 1: Install the Addon</h3>
+      <h3>Install Your Personalized Addon</h3>
       <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Click to install in Stremio (works for both Web and Desktop):
+        Click to install in Stremio - your session is already embedded in the URL!
       </p>
       
       <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
@@ -348,30 +348,16 @@
       </button>
     </div>
     
-    <div class="addon-url-box" style="background: #fff3cd; border-left: 4px solid #ffc107;">
-      <h3>Step 2: Paste Your Session ID</h3>
-      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
-        <strong>⚠️ Important:</strong> After installing, Stremio will show a configuration screen. Copy and paste this Session ID:
-      </p>
-      
-      <div class="url-display" id="session-id" style="font-family: 'Courier New', monospace; font-size: 13px; background: #fff; word-break: break-all;">SESSION_ID_HERE</div>
-      <button class="copy-button" onclick="copySessionId()" style="background: #28a745;">
-        📋 Copy Session ID
-      </button>
-    </div>
-    
     <div class="instructions">
-      <h3>Complete Setup Guide:</h3>
+      <h3>Quick Setup:</h3>
       <ol>
         <li><strong>Click "Install in Stremio"</strong> button above</li>
-        <li>Stremio will open and show a <strong>configuration screen</strong></li>
-        <li><strong>Paste your Session ID</strong> from the yellow box into the "Session ID" field in Stremio</li>
-        <li>Click <strong>"Install"</strong> in Stremio</li>
-        <li>✅ Done! Your personal Trakt recommendations will now appear</li>
+        <li>Stremio will open and <strong>automatically install</strong> your personalized addon</li>
+        <li>✅ Done! Start browsing your personal Trakt recommendations</li>
       </ol>
       
       <p style="color: #666; font-size: 13px; margin-top: 15px;">
-        💡 <strong>Tip:</strong> Keep your Session ID private - it links this addon to your Trakt account!
+        💡 <strong>Note:</strong> This URL is unique to your account. Don't share it with others!
       </p>
     </div>
     
@@ -461,26 +447,10 @@
       }, 2000);
     }
     
-    function copySessionId() {
-      const sessionElement = document.getElementById('session-id');
-      const button = event.target;
-      
-      // Create temporary textarea to copy from
-      const textarea = document.createElement('textarea');
-      textarea.value = sessionElement.textContent;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      
-      // Update button
-      button.textContent = '✓ Copied!';
-      button.classList.add('copied');
-      
-      setTimeout(() => {
-        button.textContent = '📋 Copy Session ID';
-        button.classList.remove('copied');
-      }, 2000);
+    // Extract authentication session ID from URL query parameter
+    function getAuthSessionId() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('session');
     }
     
     // Netflix CSV Import Functions
@@ -531,11 +501,18 @@
       resultsDiv.style.display = 'none';
       resultsDiv.className = 'import-results';
       
-      // Generate unique session ID
-      const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      // Get authentication session ID from URL
+      const authSessionId = getAuthSessionId();
+      if (!authSessionId) {
+        alert('Session expired. Please re-authenticate.');
+        return;
+      }
+      
+      // Generate unique SSE tracking ID for progress updates
+      const progressSessionId = 'progress-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
       
       // Set up SSE connection for real-time progress
-      const eventSource = new EventSource(`/api/import-netflix/progress/${sessionId}`);
+      const eventSource = new EventSource(`/api/import-netflix/progress/${progressSessionId}`);
       
       eventSource.onmessage = (event) => {
         try {
@@ -589,7 +566,7 @@
         
         const csvText = await selectedFile.text();
         
-        // Send to server with session ID
+        // Send to server with authentication session ID and progress tracking ID
         const response = await fetch('/api/import-netflix', {
           method: 'POST',
           headers: {
@@ -597,7 +574,8 @@
           },
           body: JSON.stringify({ 
             csvData: csvText,
-            sessionId: sessionId
+            sessionId: authSessionId,
+            progressSessionId: progressSessionId
           })
         });
         

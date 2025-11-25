@@ -15,24 +15,10 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personal Catalog',
-  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content. Paste your session ID after authentication.',
+  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
-  
-  behaviorHints: {
-    configurable: true,
-    configurationRequired: false
-  },
-  
-  config: [
-    {
-      key: 'session',
-      type: 'text',
-      title: 'Session ID',
-      required: true
-    }
-  ],
   
   catalogs: [
     // Your Personal Recommendations Catalog
@@ -77,23 +63,21 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from request config
- * Stremio sends user config values via args.config
+ * Extract session ID from request
+ * Session is attached to the request object by Express middleware
  * @param {object} args - Request args from Stremio
  * @returns {string|null} Session ID
  */
 function extractSession(args) {
   try {
-    // Debug: log what we're receiving
-    console.log('🔍 extractSession - args.config:', JSON.stringify(args.config));
-    
-    // Session is provided via userConfig in args.config.session
-    if (args.config && args.config.session) {
-      console.log(`✅ Found session: ${args.config.session.substring(0, 8)}...`);
-      return args.config.session;
+    // Session is stashed on the request object by our middleware
+    const sessionId = args.req?.sessionId;
+    if (sessionId) {
+      console.log(`✅ Found session: ${sessionId.substring(0, 8)}...`);
+      return sessionId;
     }
     
-    console.log('⚠️  No session found in args.config');
+    console.log('⚠️  No session found in request');
   } catch (error) {
     console.log('❌ Error extracting session:', error.message);
   }
