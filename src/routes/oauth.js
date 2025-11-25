@@ -203,11 +203,8 @@ router.get('/auth/callback', async (req, res) => {
       await sessionManager.updateSession(sessionId, { username: userInfo.username });
     }
     
-    // Generate a simple pair code for the user to enter in Stremio
-    const pairCode = await sessionManager.createPairCode(sessionId);
-    
-    // Redirect to success page with pair code
-    res.redirect(`/success?pairCode=${pairCode}`);
+    // Redirect to success page with session ID for hardcoding
+    res.redirect(`/success?session=${sessionId}`);
   } catch (error) {
     console.error('❌ Error during token exchange:', error.message);
     res.redirect('/error?error=' + encodeURIComponent(`Error: ${error.message}`));
@@ -218,16 +215,16 @@ router.get('/auth/callback', async (req, res) => {
  * GET /success - Success page
  */
 router.get('/success', async (req, res) => {
-  const { pairCode } = req.query;
+  const { session } = req.query;
   
-  if (!pairCode) {
-    return res.redirect('/error?error=' + encodeURIComponent('No pair code provided'));
+  if (!session) {
+    return res.redirect('/error?error=' + encodeURIComponent('No session provided'));
   }
   
-  // Verify pair code exists
-  const sessionId = await sessionManager.getSessionByPairCode(pairCode);
-  if (!sessionId) {
-    return res.redirect('/error?error=' + encodeURIComponent('Invalid pair code'));
+  // Verify session exists
+  const isValid = await sessionManager.isValidSession(session);
+  if (!isValid) {
+    return res.redirect('/error?error=' + encodeURIComponent('Invalid session'));
   }
   
   const fs = require('fs');
@@ -236,15 +233,14 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Create addon URL (user will configure pair code manually in Stremio)
+  // Create addon URL (hardcoded session for now)
   const manifestUrl = `${baseUrl}/manifest.json`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
-  // Replace URLs and inject pair code for user to copy
+  // Replace URLs and inject session ID to hardcode
   html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
   html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
-  html = html.replace(/PAIR_CODE_HERE/g, pairCode);
-  html = html.replace(/SESSION_ID_HERE/g, sessionId);
+  html = html.replace(/SESSION_ID_HERE/g, session);
   
   res.send(html);
 });

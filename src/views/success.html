@@ -333,10 +333,22 @@
     <h1>Authentication Successful!</h1>
     <p class="subtitle">Your addon is ready to use</p>
     
+    <div class="addon-url-box" style="background: #fff3cd; border: 2px solid #ffc107;">
+      <h3>⚠️ Development Mode - Hardcoded Session</h3>
+      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
+        <strong>Important:</strong> Copy this Session ID and hardcode it in <code>src/addon.js</code>:
+      </p>
+      
+      <div class="url-display" id="session-id" style="font-family: 'Courier New', monospace; font-size: 12px; background: #fff; word-break: break-all;">SESSION_ID_HERE</div>
+      <button class="copy-button" onclick="copySessionId()" style="background: #28a745;">
+        📋 Copy Session ID
+      </button>
+    </div>
+    
     <div class="addon-url-box">
-      <h3>Step 1: Install the Addon</h3>
+      <h3>Then Install the Addon</h3>
       <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Click to install in Stremio (works for both Web and Desktop):
+        After hardcoding the session ID in the code, deploy and click to install:
       </p>
       
       <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
@@ -348,30 +360,18 @@
       </button>
     </div>
     
-    <div class="addon-url-box" style="background: #fff3cd; border: 2px solid #ffc107;">
-      <h3>Step 2: Enter Your Pair Code</h3>
-      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
-        <strong>⚠️ Important:</strong> After installing, Stremio will show a configuration screen. Copy and paste this Pair Code:
-      </p>
-      
-      <div class="url-display" id="pair-code" style="font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold; background: #fff; text-align: center; letter-spacing: 2px;">PAIR_CODE_HERE</div>
-      <button class="copy-button" onclick="copyPairCode()" style="background: #28a745;">
-        📋 Copy Pair Code
-      </button>
-    </div>
-    
     <div class="instructions">
-      <h3>Complete Setup Guide:</h3>
+      <h3>Setup Steps:</h3>
       <ol>
+        <li><strong>Copy the Session ID</strong> from the yellow box above</li>
+        <li>Open <code>src/addon.js</code> and replace <code>YOUR_SESSION_ID_HERE</code> with your actual session ID</li>
+        <li>Deploy the changes to Vercel</li>
         <li><strong>Click "Install in Stremio"</strong> button above</li>
-        <li>Stremio will open and show a <strong>configuration screen</strong></li>
-        <li><strong>Paste your Pair Code</strong> from the yellow box into the "Pair Code" field in Stremio</li>
-        <li>Click <strong>"Install"</strong> in Stremio</li>
         <li>✅ Done! Your personal Trakt recommendations will now appear</li>
       </ol>
       
       <p style="color: #666; font-size: 13px; margin-top: 15px;">
-        💡 <strong>Tip:</strong> Your Pair Code is like a password - keep it private! It links this addon to your Trakt account.
+        💡 <strong>Note:</strong> This is a temporary development setup. All users will share the same session until you implement proper authentication.
       </p>
     </div>
     
@@ -461,13 +461,13 @@
       }, 2000);
     }
     
-    function copyPairCode() {
-      const pairCodeElement = document.getElementById('pair-code');
+    function copySessionId() {
+      const sessionElement = document.getElementById('session-id');
       const button = event.target;
       
       // Create temporary textarea to copy from
       const textarea = document.createElement('textarea');
-      textarea.value = pairCodeElement.textContent;
+      textarea.value = sessionElement.textContent;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
@@ -478,7 +478,7 @@
       button.classList.add('copied');
       
       setTimeout(() => {
-        button.textContent = '📋 Copy Pair Code';
+        button.textContent = '📋 Copy Session ID';
         button.classList.remove('copied');
       }, 2000);
     }

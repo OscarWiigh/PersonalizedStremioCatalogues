@@ -17,16 +17,6 @@ const manifest = {
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
   
-  // In-app configuration - Stremio will show config form automatically
-  config: [
-    {
-      key: "pairCode",
-      type: "text",
-      title: "Pair Code",
-      required: true
-    }
-  ],
-  
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
   
@@ -73,33 +63,16 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from Stremio addon arguments via pair code
+ * Extract session ID - currently hardcoded for testing
  * @param {object} args - Request args from Stremio SDK
- * @returns {Promise<string|null>} Session ID
+ * @returns {string|null} Session ID
  */
-async function extractSession(args) {
-  try {
-    // Get pair code from user config
-    const pairCode = args.config?.pairCode;
-    
-    if (!pairCode) {
-      return null;
-    }
-    
-    // Look up session ID from pair code
-    const sessionId = await sessionManager.getSessionByPairCode(pairCode);
-    
-    if (sessionId) {
-      console.log(`✅ Found session via pair code: ${sessionId.substring(0, 8)}...`);
-      return sessionId;
-    }
-    
-    console.log(`⚠️  No session found for pair code: ${pairCode}`);
-  } catch (error) {
-    console.log('ℹ️  Could not extract session from args:', error.message);
-  }
+function extractSession(args) {
+  // TODO: Replace with your actual session ID from OAuth flow
+  const HARDCODED_SESSION_ID = 'YOUR_SESSION_ID_HERE';
   
-  return null;
+  console.log(`✅ Using hardcoded session: ${HARDCODED_SESSION_ID.substring(0, 8)}...`);
+  return HARDCODED_SESSION_ID;
 }
 
 /**
@@ -108,7 +81,7 @@ async function extractSession(args) {
  */
 builder.defineCatalogHandler(async (args) => {
   const { type, id, extra } = args;
-  const sessionId = await extractSession(args);
+  const sessionId = extractSession(args);
   
   console.log(`📺 Catalog request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
@@ -176,7 +149,7 @@ builder.defineCatalogHandler(async (args) => {
  */
 builder.defineStreamHandler(async (args) => {
   const { type, id } = args;
-  const sessionId = await extractSession(args);
+  const sessionId = extractSession(args);
   
   console.log(`🎬 Stream request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
