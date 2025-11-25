@@ -16,6 +16,15 @@ const manifest = {
   version: '2.0.0',
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
+
+  behaviorHints: { configurable: true },
+
+  userConfig: {
+    required: [
+      { name: "session", type: "text", default: "" }
+    ],
+    optional: []
+  },
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
