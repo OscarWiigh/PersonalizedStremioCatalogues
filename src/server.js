@@ -63,42 +63,9 @@ app.use('/', oauthRouter);
 // Mount import API routes
 app.use('/', importRouter);
 
-// Create Stremio addon router
+// Mount Stremio addon routes
+// Session is passed via query parameter (?session=xxx) and read in handlers via args.extra.session
 const addonRouter = getRouter(addonInterface);
-
-// Session-aware routing middleware for path-based sessions
-// Validates session and attaches to request before routing to addon
-const sessionMiddleware = async (req, res, next) => {
-  const sessionId = req.params.session;
-  const sessionManager = require('./utils/sessionManager');
-  
-  console.log(`🔐 Session middleware: ${sessionId.substring(0, 8)}...`);
-  
-  // Validate UUID format
-  const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-  if (!uuidRegex.test(sessionId)) {
-    console.warn('❌ Invalid session ID format');
-    return res.status(400).json({ error: 'Invalid session ID format' });
-  }
-  
-  // Verify session exists
-  const isValid = await sessionManager.isValidSession(sessionId);
-  if (!isValid) {
-    console.warn('❌ Invalid or expired session');
-    return res.status(401).json({ error: 'Invalid or expired session' });
-  }
-  
-  // Stash session on request for addon handlers to access
-  req.sessionId = sessionId;
-  console.log(`✅ Session validated, attached to request`);
-  
-  next();
-};
-
-// Mount addon router at /u/:session with session validation middleware
-app.use('/u/:session', sessionMiddleware, addonRouter);
-
-// Also mount at root for backward compatibility (public catalogs)
 app.use('/', addonRouter);
 
 // Export for Vercel serverless

@@ -26,13 +26,19 @@ const manifest = {
       type: 'movie',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'skip', isRequired: false },
+        { name: 'session', isRequired: false }
+      ]
     },
     {
       type: 'series',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
+      extra: [
+        { name: 'skip', isRequired: false },
+        { name: 'session', isRequired: false }
+      ]
     },
     
     // Netflix Sweden Top 10 Catalog (Movies Only)
@@ -63,29 +69,24 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from request
- * Session is attached to the request object by Express middleware or available in params
- * @param {object} args - Request args from Stremio
+ * Extract session ID from Stremio addon arguments
+ * Session comes from query parameters via extras or user config
+ * @param {object} args - Request args from Stremio SDK
  * @returns {string|null} Session ID
  */
 function extractSession(args) {
   try {
-    // First try to get from middleware-attached sessionId
-    let sessionId = args.req?.sessionId;
-    
-    // Fallback to Express route params (when mounted at /u/:session)
-    if (!sessionId && args.req?.params?.session) {
-      sessionId = args.req.params.session;
+    // 1) From extras (query parameter: ?session=xxx)
+    if (args.extra && args.extra.session) {
+      return args.extra.session;
     }
     
-    if (sessionId) {
-      console.log(`✅ Found session: ${sessionId.substring(0, 8)}...`);
-      return sessionId;
+    // 2) Fallback to user config (if configured in Stremio settings)
+    if (args.config && args.config.session) {
+      return args.config.session;
     }
-    
-    console.log('⚠️  No session found in request');
   } catch (error) {
-    console.log('❌ Error extracting session:', error.message);
+    console.log('ℹ️  Could not extract session from args:', error.message);
   }
   
   return null;

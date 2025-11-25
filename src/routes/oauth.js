@@ -233,8 +233,8 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Create path-based addon URL with embedded session
-  const manifestUrl = `${baseUrl}/u/${session}/manifest.json`;
+  // Create addon URL with session as query parameter
+  const manifestUrl = `${baseUrl}/manifest.json?session=${session}`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
   // Replace URLs in the success page
