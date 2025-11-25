@@ -63,9 +63,12 @@ app.use('/', oauthRouter);
 // Mount import API routes
 app.use('/', importRouter);
 
+// Create Stremio addon router
+const addonRouter = getRouter(addonInterface);
+
 // Session-aware routing middleware for path-based sessions
-// Captures /u/:session routes, validates session, attaches to request, and strips prefix
-app.use('/u/:session', async (req, res, next) => {
+// Validates session and attaches to request before routing to addon
+const sessionMiddleware = async (req, res, next) => {
   const sessionId = req.params.session;
   const sessionManager = require('./utils/sessionManager');
   
@@ -89,17 +92,13 @@ app.use('/u/:session', async (req, res, next) => {
   req.sessionId = sessionId;
   console.log(`✅ Session validated, attached to request`);
   
-  // Strip /u/:session prefix from URL so SDK router can match paths
-  req.url = req.url.replace(/^\/u\/[^\/]+/, '');
-  req.originalUrl = req.url;
-  
-  console.log(`🔀 Rewritten URL: ${req.url}`);
-  
   next();
-});
+};
 
-// Mount default Stremio addon routes
-const addonRouter = getRouter(addonInterface);
+// Mount addon router at /u/:session with session validation middleware
+app.use('/u/:session', sessionMiddleware, addonRouter);
+
+// Also mount at root for backward compatibility (public catalogs)
 app.use('/', addonRouter);
 
 // Export for Vercel serverless
