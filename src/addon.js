@@ -69,7 +69,7 @@ const builder = new addonBuilder(manifest);
  */
 function extractSession(args) {
   // TODO: Replace with your actual session ID from OAuth flow
-  const HARDCODED_SESSION_ID = 'YOUR_SESSION_ID_HERE';
+  const HARDCODED_SESSION_ID = '799fa11e-705e-4b39-8526-29da34deec98';
   
   console.log(`✅ Using hardcoded session: ${HARDCODED_SESSION_ID.substring(0, 8)}...`);
   return HARDCODED_SESSION_ID;
