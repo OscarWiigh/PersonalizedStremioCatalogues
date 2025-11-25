@@ -160,6 +160,24 @@
       
       <p class="error" id="error-message"></p>
     </form>
+    
+    <div id="fallback" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+      <p style="color: #333; font-size: 14px; margin-bottom: 10px;">
+        <strong>Stremio didn't open automatically?</strong>
+      </p>
+      <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
+        Copy this URL and paste it in your browser's address bar:
+      </p>
+      <input 
+        type="text" 
+        id="fallback-url" 
+        readonly 
+        style="margin-bottom: 10px; font-size: 12px;"
+      >
+      <button type="button" onclick="copyFallbackUrl()" style="background: #6c757d;">
+        Copy URL
+      </button>
+    </div>
   </div>
   
   <script>
@@ -167,6 +185,10 @@
     const sessionInput = document.getElementById('session');
     const installButton = document.getElementById('install-button');
     const errorMessage = document.getElementById('error-message');
+    const fallbackDiv = document.getElementById('fallback');
+    const fallbackInput = document.getElementById('fallback-url');
+    
+    let lastManifestUrl = '';
     
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -183,7 +205,7 @@
       
       errorMessage.style.display = 'none';
       installButton.disabled = true;
-      installButton.textContent = 'Installing...';
+      installButton.textContent = 'Opening Stremio...';
       
       // Encode config as JSON and base64url (Stremio SDK format)
       const config = { session };
@@ -196,22 +218,59 @@
         .replace(/=/g, '');
       
       // Build the configured manifest URL
-      // Stremio SDK expects: /[base64url-config]/manifest.json
-      const protocol = window.location.protocol.replace('http', 'stremio');
-      const manifestUrl = `${protocol}//${window.location.host}/${configBase64}/manifest.json`;
+      // Stremio SDK expects: stremio://domain.com/[base64url-config]/manifest.json
+      const host = window.location.host;
+      const manifestUrl = `stremio://${host}/${configBase64}/manifest.json`;
+      
+      lastManifestUrl = manifestUrl;
       
       console.log('Installing with config:', config);
+      console.log('Config base64:', configBase64);
       console.log('Manifest URL:', manifestUrl);
       
-      // Open in Stremio
-      window.location.href = manifestUrl;
+      // Try multiple methods to open Stremio
+      // Method 1: Create link and click it
+      const link = document.createElement('a');
+      link.href = manifestUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      // Reset button after a delay
+      // Method 2: Also try window.location
       setTimeout(() => {
-        installButton.disabled = false;
-        installButton.textContent = 'Install Addon';
-      }, 3000);
+        try {
+          window.location.href = manifestUrl;
+        } catch (e) {
+          console.log('window.location failed:', e);
+        }
+      }, 100);
+      
+      // Show success message and fallback option
+      setTimeout(() => {
+        installButton.textContent = '✓ Opened Stremio!';
+        installButton.style.background = '#28a745';
+        
+        // Show fallback option
+        fallbackInput.value = manifestUrl;
+        fallbackDiv.style.display = 'block';
+        
+        setTimeout(() => {
+          installButton.disabled = false;
+          installButton.textContent = 'Install Addon';
+          installButton.style.background = '';
+        }, 3000);
+      }, 500);
     });
+    
+    function copyFallbackUrl() {
+      fallbackInput.select();
+      document.execCommand('copy');
+      event.target.textContent = '✓ Copied!';
+      setTimeout(() => {
+        event.target.textContent = 'Copy URL';
+      }, 2000);
+    }
   </script>
 </body>
 </html>
