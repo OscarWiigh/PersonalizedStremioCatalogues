@@ -334,9 +334,9 @@
     <p class="subtitle">Your addon is ready to use</p>
     
     <div class="addon-url-box">
-      <h3>Install Your Personalized Addon</h3>
+      <h3>Step 1: Install the Addon</h3>
       <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Click to install in Stremio - your session is already embedded in the URL!
+        Click to install in Stremio (works for both Web and Desktop):
       </p>
       
       <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
@@ -348,16 +348,30 @@
       </button>
     </div>
     
+    <div class="addon-url-box" style="background: #fff3cd; border: 2px solid #ffc107;">
+      <h3>Step 2: Enter Your Pair Code</h3>
+      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
+        <strong>⚠️ Important:</strong> After installing, Stremio will show a configuration screen. Copy and paste this Pair Code:
+      </p>
+      
+      <div class="url-display" id="pair-code" style="font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold; background: #fff; text-align: center; letter-spacing: 2px;">PAIR_CODE_HERE</div>
+      <button class="copy-button" onclick="copyPairCode()" style="background: #28a745;">
+        📋 Copy Pair Code
+      </button>
+    </div>
+    
     <div class="instructions">
-      <h3>Quick Setup:</h3>
+      <h3>Complete Setup Guide:</h3>
       <ol>
         <li><strong>Click "Install in Stremio"</strong> button above</li>
-        <li>Stremio will open and <strong>automatically install</strong> your personalized addon</li>
-        <li>✅ Done! Start browsing your personal Trakt recommendations</li>
+        <li>Stremio will open and show a <strong>configuration screen</strong></li>
+        <li><strong>Paste your Pair Code</strong> from the yellow box into the "Pair Code" field in Stremio</li>
+        <li>Click <strong>"Install"</strong> in Stremio</li>
+        <li>✅ Done! Your personal Trakt recommendations will now appear</li>
       </ol>
       
       <p style="color: #666; font-size: 13px; margin-top: 15px;">
-        💡 <strong>Note:</strong> This URL is unique to your account. Don't share it with others!
+        💡 <strong>Tip:</strong> Your Pair Code is like a password - keep it private! It links this addon to your Trakt account.
       </p>
     </div>
     
@@ -447,10 +461,33 @@
       }, 2000);
     }
     
+    function copyPairCode() {
+      const pairCodeElement = document.getElementById('pair-code');
+      const button = event.target;
+      
+      // Create temporary textarea to copy from
+      const textarea = document.createElement('textarea');
+      textarea.value = pairCodeElement.textContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      // Update button
+      button.textContent = '✓ Copied!';
+      button.classList.add('copied');
+      
+      setTimeout(() => {
+        button.textContent = '📋 Copy Pair Code';
+        button.classList.remove('copied');
+      }, 2000);
+    }
+    
     // Extract authentication session ID from URL query parameter
     function getAuthSessionId() {
       const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('session');
+      // SESSION_ID_HERE is replaced server-side
+      return 'SESSION_ID_HERE';
     }
     
     // Netflix CSV Import Functions

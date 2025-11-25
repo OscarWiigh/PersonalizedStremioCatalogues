@@ -18,6 +18,27 @@ function generateUUID() {
 }
 
 /**
+ * Generate a simple pair code (e.g., "ABC-DEF-123")
+ * @returns {string} Pair code
+ */
+function generatePairCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const segments = 3;
+  const segmentLength = 3;
+  
+  const code = [];
+  for (let i = 0; i < segments; i++) {
+    let segment = '';
+    for (let j = 0; j < segmentLength; j++) {
+      segment += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    code.push(segment);
+  }
+  
+  return code.join('-');
+}
+
+/**
  * Create a new session
  * @param {object} userData - User data to store (e.g., username)
  * @returns {Promise<string>} Session ID
@@ -158,10 +179,66 @@ async function isValidSession(sessionId) {
   return !!session;
 }
 
+/**
+ * Create and store a pair code for a session
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<string>} Generated pair code
+ */
+async function createPairCode(sessionId) {
+  const pairCode = generatePairCode();
+  
+  const redis = await getRedisClient();
+  
+  if (redis) {
+    try {
+      // Store pairCode -> sessionId mapping with 90 day expiration
+      await redis.set(`paircode:${pairCode}`, sessionId, { EX: 90 * 24 * 60 * 60 });
+      console.log(`✅ Pair code created (Redis): ${pairCode} -> ${sessionId.substring(0, 8)}...`);
+      return pairCode;
+    } catch (error) {
+      console.error('❌ Error creating pair code in Redis:', error.message);
+      // Fall through to in-memory
+    }
+  }
+
+  // In-memory fallback (store reverse mapping)
+  sessionStore.set(`paircode:${pairCode}`, sessionId);
+  console.log(`✅ Pair code created (memory): ${pairCode} -> ${sessionId.substring(0, 8)}...`);
+  return pairCode;
+}
+
+/**
+ * Look up session ID from pair code
+ * @param {string} pairCode - Pair code
+ * @returns {Promise<string|null>} Session ID or null if not found
+ */
+async function getSessionByPairCode(pairCode) {
+  if (!pairCode) {
+    return null;
+  }
+
+  const redis = await getRedisClient();
+  
+  if (redis) {
+    try {
+      const sessionId = await redis.get(`paircode:${pairCode}`);
+      return sessionId;
+    } catch (error) {
+      console.error('❌ Error getting pair code from Redis:', error.message);
+      return null;
+    }
+  }
+
+  // In-memory fallback
+  return sessionStore.get(`paircode:${pairCode}`) || null;
+}
+
 module.exports = {
   createSession,
   getSession,
   updateSession,
   deleteSession,
-  isValidSession
+  isValidSession,
+  createPairCode,
+  getSessionByPairCode
 };

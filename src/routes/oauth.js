@@ -203,8 +203,11 @@ router.get('/auth/callback', async (req, res) => {
       await sessionManager.updateSession(sessionId, { username: userInfo.username });
     }
     
-    // Redirect to success page with session ID
-    res.redirect(`/success?session=${sessionId}`);
+    // Generate a simple pair code for the user to enter in Stremio
+    const pairCode = await sessionManager.createPairCode(sessionId);
+    
+    // Redirect to success page with pair code
+    res.redirect(`/success?pairCode=${pairCode}`);
   } catch (error) {
     console.error('❌ Error during token exchange:', error.message);
     res.redirect('/error?error=' + encodeURIComponent(`Error: ${error.message}`));
@@ -215,16 +218,16 @@ router.get('/auth/callback', async (req, res) => {
  * GET /success - Success page
  */
 router.get('/success', async (req, res) => {
-  const { session } = req.query;
+  const { pairCode } = req.query;
   
-  if (!session) {
-    return res.redirect('/error?error=' + encodeURIComponent('No session provided'));
+  if (!pairCode) {
+    return res.redirect('/error?error=' + encodeURIComponent('No pair code provided'));
   }
   
-  // Verify session exists
-  const isValid = await sessionManager.isValidSession(session);
-  if (!isValid) {
-    return res.redirect('/error?error=' + encodeURIComponent('Invalid session'));
+  // Verify pair code exists
+  const sessionId = await sessionManager.getSessionByPairCode(pairCode);
+  if (!sessionId) {
+    return res.redirect('/error?error=' + encodeURIComponent('Invalid pair code'));
   }
   
   const fs = require('fs');
@@ -233,13 +236,15 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Create addon URL with session as query parameter
-  const manifestUrl = `${baseUrl}/manifest.json?session=${session}`;
+  // Create addon URL (user will configure pair code manually in Stremio)
+  const manifestUrl = `${baseUrl}/manifest.json`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
-  // Replace URLs in the success page
+  // Replace URLs and inject pair code for user to copy
   html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
   html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
+  html = html.replace(/PAIR_CODE_HERE/g, pairCode);
+  html = html.replace(/SESSION_ID_HERE/g, sessionId);
   
   res.send(html);
 });

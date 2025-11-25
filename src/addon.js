@@ -17,14 +17,19 @@ const manifest = {
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
 
-  behaviorHints: { configurable: true },
-
-  userConfig: {
-    required: [
-      { name: "session", type: "text", default: "" }
-    ],
-    optional: []
+  behaviorHints: { 
+    configurable: true,
+    configurationRequired: false
   },
+  
+  config: [
+    {
+      key: "pairCode",
+      type: "text",
+      title: "Pair Code",
+      required: true
+    }
+  ],
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
@@ -35,19 +40,13 @@ const manifest = {
       type: 'movie',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [
-        { name: 'skip', isRequired: false },
-        { name: 'session', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     {
       type: 'series',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
-      extra: [
-        { name: 'skip', isRequired: false },
-        { name: 'session', isRequired: false }
-      ]
+      extra: [{ name: 'skip', isRequired: false }]
     },
     
     // Netflix Sweden Top 10 Catalog (Movies Only)
@@ -78,22 +77,28 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from Stremio addon arguments
- * Session comes from query parameters via extras or user config
+ * Extract session ID from Stremio addon arguments via pair code
  * @param {object} args - Request args from Stremio SDK
- * @returns {string|null} Session ID
+ * @returns {Promise<string|null>} Session ID
  */
-function extractSession(args) {
+async function extractSession(args) {
   try {
-    // 1) From extras (query parameter: ?session=xxx)
-    if (args.extra && args.extra.session) {
-      return args.extra.session;
+    // Get pair code from user config
+    const pairCode = args.config?.pairCode;
+    
+    if (!pairCode) {
+      return null;
     }
     
-    // 2) Fallback to user config (if configured in Stremio settings)
-    if (args.config && args.config.session) {
-      return args.config.session;
+    // Look up session ID from pair code
+    const sessionId = await sessionManager.getSessionByPairCode(pairCode);
+    
+    if (sessionId) {
+      console.log(`✅ Found session via pair code: ${sessionId.substring(0, 8)}...`);
+      return sessionId;
     }
+    
+    console.log(`⚠️  No session found for pair code: ${pairCode}`);
   } catch (error) {
     console.log('ℹ️  Could not extract session from args:', error.message);
   }
@@ -107,7 +112,7 @@ function extractSession(args) {
  */
 builder.defineCatalogHandler(async (args) => {
   const { type, id, extra } = args;
-  const sessionId = extractSession(args);
+  const sessionId = await extractSession(args);
   
   console.log(`📺 Catalog request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
@@ -175,7 +180,7 @@ builder.defineCatalogHandler(async (args) => {
  */
 builder.defineStreamHandler(async (args) => {
   const { type, id } = args;
-  const sessionId = extractSession(args);
+  const sessionId = await extractSession(args);
   
   console.log(`🎬 Stream request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
