@@ -77,7 +77,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   
   app.listen(port, '0.0.0.0', async () => {
     console.log('');
-    console.log('🎬 Stremio Catalog Add-on');
+    console.log('🎬 Personalized Catalog');
     console.log('=====================================');
     console.log('');
     console.log(`📍 Web Interface: http://localhost:${port}`);
@@ -93,7 +93,6 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     console.log('📚 Available Catalogs:');
     console.log('   • Your Personal Recommendations (requires auth)');
     console.log('   • Netflix Sweden Top 10 (public)');
-    console.log('   • New & Popular from TMDB (public)');
     console.log('');
     console.log('Press Ctrl+C to stop the server');
     console.log('');

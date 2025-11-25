@@ -7,15 +7,16 @@ const sessionManager = require('./utils/sessionManager');
 
 /**
  * Stremio Add-on Definition (Multi-User)
- * Provides three catalogs: Trakt Recommendations, Netflix Sweden Top 10, and New & Popular
+ * Provides personalized Trakt recommendations and Netflix Sweden Top 10
  */
 
 // Define the add-on manifest
 const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
-  name: 'Personal Catalog',
-  description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
+  name: 'Personalized Catalog',
+  description: 'Personalized Trakt recommendations and Netflix Sweden Top 10.',
+  logo: 'https://stremiocatalogues.vercel.app/icon.png',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
@@ -40,20 +41,6 @@ const manifest = {
       type: 'movie',
       id: 'netflix-sweden-top10',
       name: 'Netflix Sweden Top 10',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    
-    // New & Popular Catalog (TMDB)
-    {
-      type: 'movie',
-      id: 'new-and-popular',
-      name: 'New & Popular',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'new-and-popular',
-      name: 'New & Popular',
       extra: [{ name: 'skip', isRequired: false }]
     }
   ]
@@ -116,11 +103,6 @@ builder.defineCatalogHandler(async (args) => {
         if (type === 'movie') {
           metas = await netflixService.getNetflixTop10Movies();
         }
-        break;
-        
-      case 'new-and-popular':
-        // TMDB is public, no authentication needed
-        metas = await tmdbService.getNewAndPopular(type);
         break;
         
       default:

@@ -1,21 +1,19 @@
-# Stremio Catalog Add-on with Trakt OAuth
+# Personalized Catalog - Stremio Add-on
 
-A Stremio catalog add-on that provides personalized content recommendations by integrating:
+A Stremio add-on that provides personalized content recommendations by integrating:
 
 - **Trakt Recommendations**: Personalized movie and series recommendations based on your Trakt account
 - **Netflix Sweden Top 10**: Current top 10 movies in Sweden (from Netflix's official API)
-- **New & Popular**: Trending and now playing content from TMDB (The Movie Database)
 - **Watch Syncing**: Automatically marks content as watched on Trakt when you watch in Stremio
 
 ## Features
 
-- 🎯 Three distinct catalogs with movies and series
+- 🎯 Two distinct catalogs with personalized and trending content
 - 🔐 Easy OAuth authentication via web interface
 - 📝 Automatic watch syncing to Trakt
 - 💾 Smart caching to respect API rate limits
 - 🔄 Auto-fallback mechanisms for robust operation
 - 🚀 Simple local setup and Stremio integration
-- 📊 Real-time trending and personalized recommendations
 
 ## Prerequisites
 
@@ -114,10 +112,9 @@ The add-on is now active! 🎉
 ### Step 8: Browse Your Catalogs
 
 1. Go to the **Board** or **Discover** section in Stremio
-2. You'll see three new catalog sections:
+2. You'll see two new catalog sections:
    - **Your Personal Recommendations**: Your personalized picks from Trakt
    - **Netflix Sweden Top 10**: What's trending on Netflix Sweden
-   - **New & Popular**: Latest trending content from TMDB
 
 ### Automatic Watch Syncing
 
@@ -234,7 +231,6 @@ You can test individual endpoints:
 - Auth Status: `http://localhost:8000/auth/status`
 - Manifest: `http://localhost:8000/manifest.json`
 - Trakt Movies: `http://localhost:8000/catalog/movie/trakt-recommendations.json`
-- TMDB Movies: `http://localhost:8000/catalog/movie/new-and-popular.json`
 - Netflix Movies: `http://localhost:8000/catalog/movie/netflix-sweden-top10.json`
 
 ## Security Notes
