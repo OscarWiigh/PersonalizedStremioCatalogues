@@ -16,12 +16,8 @@ const manifest = {
   version: '2.0.0',
   name: 'Personal Catalog',
   description: 'Personalized Trakt recommendations, Netflix Sweden Top 10, and TMDB trending content.',
-
-  behaviorHints: { 
-    configurable: true,
-    configurationRequired: false
-  },
   
+  // In-app configuration - Stremio will show config form automatically
   config: [
     {
       key: "pairCode",
