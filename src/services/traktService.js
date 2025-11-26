@@ -301,11 +301,12 @@ async function mapTraktToMeta(item, type) {
  * @param {string} username - Trakt username
  * @param {string} listSlug - List slug/ID
  * @param {number} cacheTTL - Optional cache TTL in milliseconds (defaults to 30 min)
- * @param {string} sort - Optional sort parameter (e.g., 'popularity,asc')
+ * @param {string} sort - Optional sort parameter (e.g., 'popularity,desc')
+ * @param {number} limit - Optional limit for number of items (default: 50)
  * @returns {Promise<Array>} Array of movie metadata
  */
-async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTTL, sort = null) {
-  const cacheKey = `trakt:list:${username}:${listSlug}${sort ? ':' + sort : ''}`;
+async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTTL, sort = null, limit = 50) {
+  const cacheKey = `trakt:list:${username}:${listSlug}${sort ? ':' + sort : ''}:${limit}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
@@ -317,10 +318,10 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
     const cacheHours = Math.floor(cacheTTL / (1000 * 60 * 60));
     console.log(`🔍 Fetching FRESH Trakt list: ${username}/${listSlug} from API...`);
     
-    // Build URL with optional sort parameter
-    let url = `${config.trakt.apiUrl}/users/${username}/lists/${listSlug}/items/movie`;
+    // Build URL with sort and limit parameters
+    let url = `${config.trakt.apiUrl}/users/${username}/lists/${listSlug}/items/movie?limit=${limit}`;
     if (sort) {
-      url += `?sort=${sort}`;
+      url += `&sort=${sort}`;
     }
     
     const headers = await getTraktHeaders();
