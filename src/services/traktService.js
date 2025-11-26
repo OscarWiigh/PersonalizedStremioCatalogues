@@ -3,7 +3,8 @@ const { config } = require('../config');
 const cache = require('../utils/cache');
 const tokenManager = require('../utils/tokenManager');
 
-// Helper to get TMDB images and cast
+// Helper to get TMDB images only (cast removed for catalog performance)
+// Cast is only needed on detail pages, not in catalog listings
 async function getTMDBData(tmdbId, type) {
   if (!tmdbId || !config.tmdb.apiKey) {
     return null;
@@ -11,7 +12,7 @@ async function getTMDBData(tmdbId, type) {
   
   try {
     const endpoint = type === 'movie' ? 'movie' : 'tv';
-    const url = `${config.tmdb.apiUrl}/${endpoint}/${tmdbId}?api_key=${config.tmdb.apiKey}&append_to_response=credits`;
+    const url = `${config.tmdb.apiUrl}/${endpoint}/${tmdbId}?api_key=${config.tmdb.apiKey}`;
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -20,18 +21,9 @@ async function getTMDBData(tmdbId, type) {
     
     const data = await response.json();
     
-    // Extract cast (top 10 actors)
-    let cast = [];
-    if (data.credits && data.credits.cast) {
-      cast = data.credits.cast
-        .slice(0, 10)
-        .map(actor => actor.name);
-    }
-    
     return {
       poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w500${data.poster_path}` : null,
-      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${data.backdrop_path}` : null,
-      cast: cast
+      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${data.backdrop_path}` : null
     };
   } catch (error) {
     return null;
@@ -271,15 +263,12 @@ async function mapTraktToMeta(item, type) {
     imdbRating: item.rating ? item.rating.toFixed(1) : undefined,
   };
 
-  // Get images and cast from TMDB if available
+  // Get images from TMDB if available (cast removed for catalog performance)
   if (item.ids && item.ids.tmdb) {
     const tmdbData = await getTMDBData(item.ids.tmdb, type);
     if (tmdbData) {
       meta.poster = tmdbData.poster;
       meta.background = tmdbData.background;
-      if (tmdbData.cast && tmdbData.cast.length > 0) {
-        meta.cast = tmdbData.cast;
-      }
     }
   }
 

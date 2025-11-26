@@ -204,10 +204,11 @@ async function mapTMDBToMeta(item, type) {
     meta.genres = item.genre_ids.map(id => getGenreName(id));
   }
 
-  // Fetch IMDB ID and cast information
+  // Fetch IMDB ID only (skip cast for catalog performance)
+  // Cast is only needed on detail pages, not in catalog listings
   try {
     const mediaType = type === 'movie' ? 'movie' : 'tv';
-    const detailUrl = `${config.tmdb.apiUrl}/${mediaType}/${item.id}?api_key=${config.tmdb.apiKey}&append_to_response=credits,external_ids`;
+    const detailUrl = `${config.tmdb.apiUrl}/${mediaType}/${item.id}?api_key=${config.tmdb.apiKey}&append_to_response=external_ids`;
     const response = await fetch(detailUrl);
     
     if (response.ok) {
@@ -216,13 +217,6 @@ async function mapTMDBToMeta(item, type) {
       // Use IMDB ID as primary ID if available (critical for Stremio compatibility)
       if (detailData.external_ids && detailData.external_ids.imdb_id) {
         meta.id = detailData.external_ids.imdb_id;
-      }
-      
-      // Extract cast (top 10 actors)
-      if (detailData.credits && detailData.credits.cast) {
-        meta.cast = detailData.credits.cast
-          .slice(0, 10)
-          .map(actor => actor.name);
       }
     }
   } catch (error) {
