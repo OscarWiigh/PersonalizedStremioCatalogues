@@ -292,9 +292,13 @@ async function getNewlyReleasedPopular() {
     
     console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last 30 days: ${startDate} to ${endDate})...`);
     
-    // Use discover endpoint with filters
+    // Use discover endpoint with filters matching TMDB's website exactly
     // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=20&page=1`;
+    // watch_region=SE: Available in Sweden
+    // vote_count.gte=50: At least 50 votes for quality
+    // vote_average: 0-10 range
+    // with_runtime: 0-400 minutes
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=1`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
