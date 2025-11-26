@@ -93,7 +93,7 @@ async function getMovieRecommendations() {
     }
 
     console.log('🔍 Fetching FRESH Trakt movie recommendations from API...');
-    const url = `${config.trakt.apiUrl}/recommendations/movies?limit=50`;
+    const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=50`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -150,7 +150,7 @@ async function getSeriesRecommendations() {
     }
 
     console.log('🔍 Fetching FRESH Trakt series recommendations from API...');
-    const url = `${config.trakt.apiUrl}/recommendations/shows?limit=50`;
+    const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=50`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -198,7 +198,7 @@ async function getTrendingMovies() {
 
   try {
     console.log('🔍 Fetching FRESH Trakt trending movies from API...');
-    const url = `${config.trakt.apiUrl}/movies/trending?limit=50`;
+    const url = `${config.trakt.apiUrl}/movies/trending?extended=full&limit=50`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
 
@@ -234,7 +234,7 @@ async function getTrendingSeries() {
 
   try {
     console.log('🔍 Fetching FRESH Trakt trending series from API...');
-    const url = `${config.trakt.apiUrl}/shows/trending?limit=50`;
+    const url = `${config.trakt.apiUrl}/shows/trending?extended=full&limit=50`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
 
