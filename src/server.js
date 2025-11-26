@@ -171,18 +171,38 @@ app.get('/poster/stats', (req, res) => {
 });
 
 // Admin endpoint to clear Netflix catalog cache
-app.get('/admin/clear-netflix-cache', async (req, res) => {
+// Admin endpoint to clear all catalog caches
+app.get('/admin/clear-cache', async (req, res) => {
   try {
     const cache = require('./utils/cache');
-    await cache.clear('netflix:sweden:movies:top10');
-    await cache.clear('netflix:sweden:series:top10');
+    
+    // Clear all catalog caches
+    const cacheKeys = [
+      // Netflix Top 10
+      'netflix:sweden:movies:top10',
+      'netflix:sweden:series:top10',
+      // TMDB newly released popular
+      'tmdb:movies:newly-released-popular',
+      // Trakt recommendations (note: these are per-session, so we clear the pattern)
+      'trakt:movies:recommendations',
+      'trakt:series:recommendations',
+      // Trakt public list
+      'trakt:list:leepmc1984:new-movie-releases-digital:popularity,desc:50'
+    ];
+    
+    for (const key of cacheKeys) {
+      await cache.clear(key);
+    }
     
     res.json({
       success: true,
-      message: 'Netflix catalog cache cleared! New requests will fetch fresh data with badge poster URLs.',
-      cleared: [
-        'netflix:sweden:movies:top10',
-        'netflix:sweden:series:top10'
+      message: 'All catalog caches cleared! Next requests will fetch fresh data from APIs.',
+      cleared: cacheKeys,
+      catalogs: [
+        '🆕 Newly Released (TMDB)',
+        '🎬 Netflix Sweden Top 10',
+        '⭐ Trakt Recommendations (Movies)',
+        '📺 Trakt Recommendations (Series)'
       ]
     });
   } catch (error) {
@@ -191,6 +211,11 @@ app.get('/admin/clear-netflix-cache', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Legacy redirect for old endpoint name
+app.get('/admin/clear-netflix-cache', (req, res) => {
+  res.redirect(301, '/admin/clear-cache');
 });
 
 // =====================================================
