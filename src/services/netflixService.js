@@ -134,11 +134,14 @@ async function getNetflixTop10Movies() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Netflix Top 10 movies from cache (Redis)');
     return cached;
   }
 
   try {
+    console.log('🔍 Fetching FRESH Netflix Top 10 movies from web...');
     const metas = await scrapeNetflixTop10('movie');
+    console.log(`✅ Netflix returned ${metas.length} Top 10 movies (cached for 24 hours)`);
     await cache.set(cacheKey, metas, config.cache.netflixTTL);
     return metas;
   } catch (error) {
@@ -156,11 +159,14 @@ async function getNetflixTop10Series() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Netflix Top 10 series from cache (Redis)');
     return cached;
   }
 
   try {
+    console.log('🔍 Fetching FRESH Netflix Top 10 series from web...');
     const metas = await scrapeNetflixTop10('series');
+    console.log(`✅ Netflix returned ${metas.length} Top 10 series (cached for 24 hours)`);
     await cache.set(cacheKey, metas, config.cache.netflixTTL);
     return metas;
   } catch (error) {

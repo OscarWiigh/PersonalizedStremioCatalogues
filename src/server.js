@@ -26,6 +26,9 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(bodyParser.json({ limit: '10mb' })); // Increased limit for Netflix CSV uploads
 app.use(cookieParser());
 
+// Serve static files from public directory (for icon.png, favicon, etc.)
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Redis test endpoint
 app.get('/test/redis', async (req, res) => {
   const { getRedisClient } = require('./utils/redis');

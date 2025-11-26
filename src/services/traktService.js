@@ -80,6 +80,7 @@ async function getMovieRecommendations() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Trakt movie recommendations from cache (Redis)');
     return cached;
   }
 
@@ -91,7 +92,7 @@ async function getMovieRecommendations() {
       return getTrendingMovies();
     }
 
-    console.log('🔍 Fetching personal Trakt movie recommendations...');
+    console.log('🔍 Fetching FRESH Trakt movie recommendations from API...');
     const url = `${config.trakt.apiUrl}/recommendations/movies?limit=50`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
@@ -109,7 +110,7 @@ async function getMovieRecommendations() {
     }
 
     const data = await response.json();
-    console.log(`✅ Trakt returned ${data.length} movie recommendations`);
+    console.log(`✅ Trakt returned ${data.length} movie recommendations (cached for 30 min)`);
     
     // If no recommendations, fall back to trending
     if (data.length === 0) {
@@ -136,6 +137,7 @@ async function getSeriesRecommendations() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Trakt series recommendations from cache (Redis)');
     return cached;
   }
 
@@ -147,7 +149,7 @@ async function getSeriesRecommendations() {
       return getTrendingSeries();
     }
 
-    console.log('🔍 Fetching personal Trakt series recommendations...');
+    console.log('🔍 Fetching FRESH Trakt series recommendations from API...');
     const url = `${config.trakt.apiUrl}/recommendations/shows?limit=50`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
@@ -163,7 +165,7 @@ async function getSeriesRecommendations() {
     }
 
     const data = await response.json();
-    console.log(`✅ Trakt returned ${data.length} series recommendations`);
+    console.log(`✅ Trakt returned ${data.length} series recommendations (cached for 30 min)`);
     
     // If no recommendations, fall back to trending
     if (data.length === 0) {
@@ -190,11 +192,12 @@ async function getTrendingMovies() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Trakt trending movies from cache (Redis)');
     return cached;
   }
 
   try {
-    console.log('🔍 Fetching Trakt trending movies...');
+    console.log('🔍 Fetching FRESH Trakt trending movies from API...');
     const url = `${config.trakt.apiUrl}/movies/trending?limit=50`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
@@ -205,7 +208,7 @@ async function getTrendingMovies() {
     }
 
     const data = await response.json();
-    console.log(`✅ Trakt returned ${data.length} trending movies`);
+    console.log(`✅ Trakt returned ${data.length} trending movies (cached for 30 min)`);
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item.movie, 'movie')));
     
     await cache.set(cacheKey, metas, config.cache.traktTTL);
@@ -225,11 +228,12 @@ async function getTrendingSeries() {
   const cached = await cache.get(cacheKey);
   
   if (cached) {
+    console.log('💾 Serving Trakt trending series from cache (Redis)');
     return cached;
   }
 
   try {
-    console.log('🔍 Fetching Trakt trending series...');
+    console.log('🔍 Fetching FRESH Trakt trending series from API...');
     const url = `${config.trakt.apiUrl}/shows/trending?limit=50`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
@@ -240,7 +244,7 @@ async function getTrendingSeries() {
     }
 
     const data = await response.json();
-    console.log(`✅ Trakt returned ${data.length} trending series`);
+    console.log(`✅ Trakt returned ${data.length} trending series (cached for 30 min)`);
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item.show, 'series')));
     
     await cache.set(cacheKey, metas, config.cache.traktTTL);
