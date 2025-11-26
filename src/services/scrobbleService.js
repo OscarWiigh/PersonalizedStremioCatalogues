@@ -9,22 +9,28 @@ const tokenManager = require('../utils/tokenManager');
 
 /**
  * Mark a movie or episode as watched on Trakt
+ * @param {string} sessionId - User session ID
  * @param {string} imdbId - IMDB ID (e.g., 'tt1234567')
  * @param {string} type - Content type ('movie' or 'series')
  * @param {string} [seasonNumber] - Season number for series
  * @param {string} [episodeNumber] - Episode number for series
  * @returns {Promise<boolean>} True if successful
  */
-async function markAsWatched(imdbId, type, seasonNumber = null, episodeNumber = null) {
+async function markAsWatched(sessionId, imdbId, type, seasonNumber = null, episodeNumber = null) {
   try {
+    if (!sessionId) {
+      console.log('ℹ️  No session ID provided');
+      return false;
+    }
+
     // Check if user is authenticated
-    const isAuth = tokenManager.isAuthenticated();
+    const isAuth = await tokenManager.isAuthenticated(sessionId);
     if (!isAuth) {
       console.log('ℹ️  Not authenticated, skipping watch sync');
       return false;
     }
 
-    const token = await tokenManager.getAccessToken();
+    const token = await tokenManager.getAccessToken(sessionId);
     if (!token) {
       console.log('ℹ️  No valid token, skipping watch sync');
       return false;
@@ -58,7 +64,7 @@ async function markAsWatched(imdbId, type, seasonNumber = null, episodeNumber = 
     }
 
     // Get client ID for the request
-    const tokens = tokenManager.loadTokens();
+    const tokens = await tokenManager.loadTokens(sessionId);
     const clientId = tokens?.client_id;
     
     if (!clientId) {
@@ -145,26 +151,32 @@ function parseStremioId(id) {
 
 /**
  * Bulk mark items as watched on Trakt
+ * @param {string} sessionId - User session ID
  * @param {array} items - Array of {imdbId, type, watchedAt} objects
  * @param {function} progressCallback - Optional callback for progress updates
  * @returns {Promise<object>} Sync results
  */
-async function bulkMarkAsWatched(items, progressCallback = null) {
+async function bulkMarkAsWatched(sessionId, items, progressCallback = null) {
   try {
+    if (!sessionId) {
+      console.log('ℹ️  No session ID provided');
+      return { success: false, error: 'No session ID provided' };
+    }
+
     // Check authentication
-    const isAuth = tokenManager.isAuthenticated();
+    const isAuth = await tokenManager.isAuthenticated(sessionId);
     if (!isAuth) {
       console.log('ℹ️  Not authenticated, skipping bulk sync');
       return { success: false, error: 'Not authenticated' };
     }
 
-    const token = await tokenManager.getAccessToken();
+    const token = await tokenManager.getAccessToken(sessionId);
     if (!token) {
       console.log('ℹ️  No valid token, skipping bulk sync');
       return { success: false, error: 'No valid token' };
     }
 
-    const tokens = tokenManager.loadTokens();
+    const tokens = await tokenManager.loadTokens(sessionId);
     const clientId = tokens?.client_id;
     
     if (!clientId) {

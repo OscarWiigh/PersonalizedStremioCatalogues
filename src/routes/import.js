@@ -144,7 +144,7 @@ router.post('/api/import-netflix', async (req, res) => {
     });
 
     // Bulk sync to Trakt
-    const syncResult = await bulkMarkAsWatched(itemsToSync, (progress) => {
+    const syncResult = await bulkMarkAsWatched(sessionId, itemsToSync, (progress) => {
       console.log(`📤 Syncing: ${progress.current}/${progress.total} ${progress.type}`);
       
       // Calculate progress: 75% -> 95% for Trakt syncing
