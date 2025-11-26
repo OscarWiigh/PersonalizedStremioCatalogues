@@ -1,7 +1,5 @@
 const sharp = require('sharp');
 const fetch = require('node-fetch');
-const path = require('path');
-const fs = require('fs');
 
 /**
  * Poster Service
@@ -25,31 +23,10 @@ function cleanExpiredCache() {
   }
 }
 
-// Load and cache the Sansation font once at module load
-let sansationFontBase64 = null;
-
-/**
- * Get Sansation font as base64 (cached)
- * @returns {string} Base64 encoded font
- */
-function getSansationFont() {
-  if (!sansationFontBase64) {
-    try {
-      const fontPath = path.join(__dirname, '../../fonts/Sansation-Bold.ttf');
-      const fontBuffer = fs.readFileSync(fontPath);
-      sansationFontBase64 = fontBuffer.toString('base64');
-      console.log('✅ Sansation font loaded successfully');
-    } catch (error) {
-      console.error('❌ Error loading Sansation font:', error.message);
-      return null;
-    }
-  }
-  return sansationFontBase64;
-}
-
 /**
  * Create a Netflix-style rank badge SVG
- * Bold red rectangle with thick white numbers using Sansation Bold font
+ * Bold red rectangle with thick white numbers
+ * Uses Arial Black which is available on Vercel's Ubuntu environment
  * @param {number} rank - Rank number (1-10)
  * @param {number} size - Badge width in pixels
  * @returns {Buffer} SVG buffer
@@ -58,48 +35,26 @@ function createBadgeSVG(rank, size = 160) {
   // Rectangle dimensions - wider for double digits
   const width = rank === 10 ? size * 0.9 : size * 0.6;
   const height = size * 0.8;
-  const fontSize = height * 0.65; // Large, bold numbers
+  const fontSize = height * 0.7; // Large, bold numbers
   
   // Bold Netflix red - no transparency
   const bgColor = 'rgb(229, 9, 20)';
   
-  // Get embedded font
-  const fontBase64 = getSansationFont();
-  
-  // Build SVG with embedded Sansation font
-  let fontFaceCSS = '';
-  if (fontBase64) {
-    fontFaceCSS = `
-      @font-face {
-        font-family: 'Sansation';
-        src: url('data:font/truetype;charset=utf-8;base64,${fontBase64}') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-      }
-    `;
-  }
-  
-  const fontFamily = fontBase64 
-    ? "'Sansation', 'Arial Black', Arial, sans-serif"
-    : "'Arial Black', Arial, sans-serif";
-  
+  // Use Arial Black / Helvetica Bold - universally available
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style type="text/css">
-      ${fontFaceCSS}
-    </style>
-  </defs>
-  <rect width="${width}" height="${height}" fill="${bgColor}" rx="4"/>
+  <rect width="${width}" height="${height}" fill="${bgColor}" rx="6"/>
   <text 
     x="50%" 
-    y="55%" 
+    y="52%" 
+    dominant-baseline="middle"
     text-anchor="middle" 
-    font-family="${fontFamily}" 
+    font-family="Arial Black, Arial, Helvetica, sans-serif" 
     font-size="${fontSize}" 
-    font-weight="bold" 
+    font-weight="900" 
     fill="white"
     stroke="white"
-    stroke-width="2"
+    stroke-width="3"
+    paint-order="stroke fill"
   >${rank}</text>
 </svg>`;
   
