@@ -4,6 +4,26 @@ const { config } = require('../config');
 const cache = require('../utils/cache');
 
 /**
+ * Get server base URL for poster endpoint
+ * @returns {string} Base URL
+ */
+function getServerBaseUrl() {
+  // Check if we're running on Vercel
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // Check for custom base URL env var
+  if (process.env.SERVER_BASE_URL) {
+    return process.env.SERVER_BASE_URL;
+  }
+  
+  // Default to localhost for development
+  const port = process.env.PORT || 8000;
+  return `http://localhost:${port}`;
+}
+
+/**
  * Transliterate special characters for better TMDB searches
  * @param {string} text - Text to transliterate
  * @returns {string} Transliterated text
@@ -283,12 +303,17 @@ async function scrapeNetflixTop10(type) {
       
       if (tmdbData) {
         // Use TMDB data if found
+        const itemId = tmdbData.imdb_id || `tmdb:${tmdbData.id}`;
+        const itemType = type === 'movie' ? 'movie' : 'series';
+        const baseUrl = getServerBaseUrl();
+        
         const meta = {
-          id: tmdbData.imdb_id || `tmdb:${tmdbData.id}`,
-          type: type === 'movie' ? 'movie' : 'series',
+          id: itemId,
+          type: itemType,
           name: tmdbData.title || tmdbData.name || item.title,
           description: tmdbData.overview || `#${item.rank} on Netflix Sweden Top 10`,
-          poster: tmdbData.poster_path ? `${config.tmdb.imageBaseUrl}/w500${tmdbData.poster_path}` : undefined,
+          // Use custom poster endpoint with Netflix rank badge
+          poster: `${baseUrl}/poster/${itemType}/${item.rank}/${encodeURIComponent(itemId)}.jpg`,
           background: tmdbData.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${tmdbData.backdrop_path}` : undefined,
           genres: tmdbData.genreNames || ['Netflix Top 10', 'Popular'],
           releaseInfo: tmdbData.release_date ? tmdbData.release_date.substring(0, 4) : 
@@ -297,7 +322,7 @@ async function scrapeNetflixTop10(type) {
           cast: tmdbData.cast || []
         };
         
-        console.log(`   ✅ Enriched with full metadata`);
+        console.log(`   ✅ Enriched with full metadata + Netflix badge`);
         return meta;
       } else {
         // Fallback to basic metadata
