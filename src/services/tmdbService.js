@@ -185,7 +185,7 @@ async function mapTMDBToMeta(item, type) {
   const releaseDate = type === 'movie' ? item.release_date : item.first_air_date;
   
   const meta = {
-    id: `tmdb:${item.id}`,
+    id: `tmdb:${item.id}`, // Temporary, will be replaced with IMDB ID if available
     type: type,
     name: title,
     poster: item.poster_path 
@@ -204,14 +204,19 @@ async function mapTMDBToMeta(item, type) {
     meta.genres = item.genre_ids.map(id => getGenreName(id));
   }
 
-  // Fetch cast information
+  // Fetch IMDB ID and cast information
   try {
     const mediaType = type === 'movie' ? 'movie' : 'tv';
-    const detailUrl = `${config.tmdb.apiUrl}/${mediaType}/${item.id}?api_key=${config.tmdb.apiKey}&append_to_response=credits`;
+    const detailUrl = `${config.tmdb.apiUrl}/${mediaType}/${item.id}?api_key=${config.tmdb.apiKey}&append_to_response=credits,external_ids`;
     const response = await fetch(detailUrl);
     
     if (response.ok) {
       const detailData = await response.json();
+      
+      // Use IMDB ID as primary ID if available (critical for Stremio compatibility)
+      if (detailData.external_ids && detailData.external_ids.imdb_id) {
+        meta.id = detailData.external_ids.imdb_id;
+      }
       
       // Extract cast (top 10 actors)
       if (detailData.credits && detailData.credits.cast) {
@@ -221,7 +226,8 @@ async function mapTMDBToMeta(item, type) {
       }
     }
   } catch (error) {
-    // Cast fetch failed, continue without it
+    // Fetch failed, continue with tmdb: ID format
+    console.warn(`Failed to fetch IMDB ID for TMDB ${item.id}:`, error.message);
   }
 
   return meta;
