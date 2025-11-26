@@ -1,5 +1,7 @@
 const sharp = require('sharp');
 const fetch = require('node-fetch');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Poster Service
@@ -23,10 +25,31 @@ function cleanExpiredCache() {
   }
 }
 
+// Load and cache the Sansation font once at module load
+let sansationFontBase64 = null;
+
+/**
+ * Get Sansation font as base64 (cached)
+ * @returns {string} Base64 encoded font
+ */
+function getSansationFont() {
+  if (!sansationFontBase64) {
+    try {
+      const fontPath = path.join(__dirname, '../../fonts/Sansation-Bold.ttf');
+      const fontBuffer = fs.readFileSync(fontPath);
+      sansationFontBase64 = fontBuffer.toString('base64');
+      console.log('✅ Sansation font loaded successfully');
+    } catch (error) {
+      console.error('❌ Error loading Sansation font:', error.message);
+      return null;
+    }
+  }
+  return sansationFontBase64;
+}
+
 /**
  * Create a Netflix-style rank badge SVG
- * Bold red rectangle with thick white numbers
- * Uses system fonts available on Vercel (DejaVu Sans, Liberation Sans, Arial)
+ * Bold red rectangle with thick white numbers using Sansation Bold font
  * @param {number} rank - Rank number (1-10)
  * @param {number} size - Badge width in pixels
  * @returns {Buffer} SVG buffer
@@ -40,15 +63,38 @@ function createBadgeSVG(rank, size = 160) {
   // Bold Netflix red - no transparency
   const bgColor = 'rgb(229, 9, 20)';
   
-  // Use fonts that are available on Linux/Vercel
-  // DejaVu Sans Bold is commonly available on Vercel's Ubuntu environment
+  // Get embedded font
+  const fontBase64 = getSansationFont();
+  
+  // Build SVG with embedded Sansation font
+  let fontFaceCSS = '';
+  if (fontBase64) {
+    fontFaceCSS = `
+      @font-face {
+        font-family: 'Sansation';
+        src: url('data:font/truetype;charset=utf-8;base64,${fontBase64}') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+      }
+    `;
+  }
+  
+  const fontFamily = fontBase64 
+    ? "'Sansation', 'Arial Black', Arial, sans-serif"
+    : "'Arial Black', Arial, sans-serif";
+  
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style type="text/css">
+      ${fontFaceCSS}
+    </style>
+  </defs>
   <rect width="${width}" height="${height}" fill="${bgColor}" rx="4"/>
   <text 
     x="50%" 
     y="55%" 
     text-anchor="middle" 
-    font-family="'DejaVu Sans', 'Liberation Sans', 'Arial Black', Arial, sans-serif" 
+    font-family="${fontFamily}" 
     font-size="${fontSize}" 
     font-weight="bold" 
     fill="white"
