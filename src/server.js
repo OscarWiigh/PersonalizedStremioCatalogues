@@ -62,24 +62,26 @@ app.get('/test/redis', async (req, res) => {
   }
 });
 
-// Mount OAuth routes (web interface)
-app.use('/', oauthRouter);
-
-// Mount import API routes
-app.use('/', importRouter);
+// =====================================================
+// POSTER ROUTES - Must be BEFORE OAuth routes
+// =====================================================
 
 // Netflix poster badge route
 // Serves TMDB posters with Netflix rank badges overlaid
 app.get('/poster/:type/:rank/:id.jpg', async (req, res) => {
+  console.log(`🖼️  Poster request received: ${req.params.type}/${req.params.rank}/${req.params.id}`);
+  
   const { type, rank, id } = req.params;
   const rankNum = parseInt(rank, 10);
   
   // Validate inputs
   if (!['movie', 'series'].includes(type)) {
+    console.log(`   ❌ Invalid type: ${type}`);
     return res.status(400).send('Invalid type');
   }
   
   if (isNaN(rankNum) || rankNum < 1 || rankNum > 10) {
+    console.log(`   ❌ Invalid rank: ${rank}`);
     return res.status(400).send('Invalid rank (must be 1-10)');
   }
   
@@ -190,6 +192,16 @@ app.get('/admin/clear-netflix-cache', async (req, res) => {
     });
   }
 });
+
+// =====================================================
+// END POSTER ROUTES
+// =====================================================
+
+// Mount OAuth routes (web interface)
+app.use('/', oauthRouter);
+
+// Mount import API routes
+app.use('/', importRouter);
 
 // Mount Stremio addon routes
 // Session is passed via query parameter (?session=xxx) and read in handlers via args.extra.session

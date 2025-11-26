@@ -25,32 +25,22 @@ function cleanExpiredCache() {
 
 /**
  * Create a Netflix-style rank badge SVG
+ * Uses sans-serif font which should be available in all environments
  * @param {number} rank - Rank number (1-10)
  * @param {number} size - Badge diameter in pixels
  * @returns {Buffer} SVG buffer
  */
 function createBadgeSVG(rank, size = 80) {
-  const fontSize = size * 0.6; // 60% of badge size
-  const fontWeight = 'bold';
+  const fontSize = Math.floor(size * 0.55);
   
   // Netflix red with semi-transparency
   const bgColor = 'rgba(229, 9, 20, 0.85)';
   
-  const svg = `
-    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="${bgColor}"/>
-      <text 
-        x="50%" 
-        y="50%" 
-        dominant-baseline="central" 
-        text-anchor="middle" 
-        font-family="Arial, Helvetica, sans-serif" 
-        font-size="${fontSize}" 
-        font-weight="${fontWeight}" 
-        fill="white"
-      >${rank}</text>
-    </svg>
-  `;
+  // Simple SVG with generic sans-serif font
+  const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="${bgColor}"/>
+  <text x="50%" y="55%" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="white" font-family="sans-serif">${rank}</text>
+</svg>`;
   
   return Buffer.from(svg);
 }
