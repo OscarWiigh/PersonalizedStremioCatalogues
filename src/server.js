@@ -178,16 +178,14 @@ app.get('/admin/clear-cache', async (req, res) => {
     
     // Clear all catalog caches
     const cacheKeys = [
+      // TMDB newly released popular (digital/physical releases)
+      'tmdb:movies:newly-released-popular',
       // Netflix Top 10
       'netflix:sweden:movies:top10',
       'netflix:sweden:series:top10',
-      // TMDB newly released popular
-      'tmdb:movies:newly-released-popular',
       // Trakt recommendations (note: these are per-session, so we clear the pattern)
       'trakt:movies:recommendations',
-      'trakt:series:recommendations',
-      // Trakt public list
-      'trakt:list:leepmc1984:new-movie-releases-digital:popularity,desc:50'
+      'trakt:series:recommendations'
     ];
     
     for (const key of cacheKeys) {

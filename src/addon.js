@@ -7,7 +7,7 @@ const sessionManager = require('./utils/sessionManager');
 
 /**
  * Stremio Add-on Definition (Multi-User)
- * Provides personalized Trakt recommendations and Netflix Sweden Top 10
+ * Provides newly released movies (TMDB), Netflix Sweden Top 10, and personalized Trakt recommendations
  */
 
 // Define the add-on manifest
@@ -15,17 +15,17 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personalized Catalog',
-  description: 'Personalized Trakt recommendations and Netflix Sweden Top 10.',
+  description: 'Newly released movies (TMDB), Netflix Sweden Top 10, and personalized Trakt recommendations.',
   logo: 'https://stremiocatalogues.vercel.app/icon.png',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
   
   catalogs: [
-    // Newly Released Movies (Public Trakt List)
+    // Newly Released Movies (TMDB)
     {
       type: 'movie',
-      id: 'trakt-new-releases',
+      id: 'tmdb-new-releases',
       name: 'Newly Released',
       extra: [{ name: 'skip', isRequired: false }]
     },
@@ -87,9 +87,10 @@ builder.defineCatalogHandler(async (args) => {
     
     // Route to appropriate service based on catalog ID
     switch (id) {
-      case 'trakt-new-releases':
+      case 'tmdb-new-releases':
         // TMDB newly released movies (no auth needed)
-        // Last 60 days, sorted by popularity descending (most popular first)
+        // Last 30 days (1 month), digital/physical releases only
+        // Sorted by popularity descending (most popular first)
         // Cached for 24 hours, limited to 50 results
         if (type === 'movie') {
           metas = await tmdbService.getNewlyReleasedPopular();

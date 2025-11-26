@@ -267,7 +267,7 @@ function getGenreName(id) {
 }
 
 /**
- * Fetch newly released popular movies (last 60 days)
+ * Fetch newly released popular movies (last 30 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * Filters for digital and physical releases only
  * @returns {Promise<Array>} Array of movie metadata sorted by popularity
@@ -282,15 +282,15 @@ async function getNewlyReleasedPopular() {
   }
 
   try {
-    // Calculate date range: last 60 days
+    // Calculate date range: last 30 days (1 month) dynamically
     const today = new Date();
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(today.getDate() - 60);
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(today.getDate() - 30);
     
     const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    const startDate = sixtyDaysAgo.toISOString().split('T')[0];
+    const startDate = oneMonthAgo.toISOString().split('T')[0];
     
-    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (${startDate} to ${endDate})...`);
+    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last 30 days: ${startDate} to ${endDate})...`);
     
     // Use discover endpoint with filters
     // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
