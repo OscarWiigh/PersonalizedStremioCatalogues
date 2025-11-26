@@ -269,6 +269,7 @@ function getGenreName(id) {
 /**
  * Fetch newly released popular movies (last 60 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
+ * Filters for digital and physical releases only
  * @returns {Promise<Array>} Array of movie metadata sorted by popularity
  */
 async function getNewlyReleasedPopular() {
@@ -292,7 +293,8 @@ async function getNewlyReleasedPopular() {
     console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (${startDate} to ${endDate})...`);
     
     // Use discover endpoint with filters
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&vote_count.gte=20&page=1`;
+    // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=20&page=1`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
@@ -302,7 +304,7 @@ async function getNewlyReleasedPopular() {
     }
 
     const data = await response.json();
-    console.log(`✅ TMDB returned ${data.results.length} newly released movies (cached for 24h)`);
+    console.log(`✅ TMDB returned ${data.results.length} newly released movies (digital/physical only, cached for 24h)`);
     
     // Limit to 50 results
     const limitedResults = data.results.slice(0, 50);
