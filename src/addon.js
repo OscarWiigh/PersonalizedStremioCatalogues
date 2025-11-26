@@ -22,17 +22,11 @@ const manifest = {
   types: ['movie', 'series'],
   
   catalogs: [
-    // Your Personal Recommendations Catalog
+    // Newly Released Movies (Public Trakt List)
     {
       type: 'movie',
-      id: 'trakt-recommendations',
-      name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'trakt-recommendations',
-      name: 'Your Personal Recommendations',
+      id: 'trakt-new-releases',
+      name: 'Newly Released',
       extra: [{ name: 'skip', isRequired: false }]
     },
     
@@ -41,6 +35,22 @@ const manifest = {
       type: 'movie',
       id: 'netflix-sweden-top10',
       name: 'Netflix Sweden Top 10',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    
+    // Your Personal Recommendations - Movies
+    {
+      type: 'movie',
+      id: 'trakt-recommendations',
+      name: 'Your Personal Recommendations',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    
+    // Your Personal Recommendations - Series
+    {
+      type: 'series',
+      id: 'trakt-recommendations',
+      name: 'Your Personal Recommendations',
       extra: [{ name: 'skip', isRequired: false }]
     }
   ]
@@ -77,6 +87,15 @@ builder.defineCatalogHandler(async (args) => {
     
     // Route to appropriate service based on catalog ID
     switch (id) {
+      case 'trakt-new-releases':
+        // Public Trakt list - newly released movies (no auth needed)
+        // Cached for 24 hours since list only updates once a day
+        if (type === 'movie') {
+          const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+          metas = await traktService.getPublicList('leepmc1984', 'new-movie-releases-digital', TWENTY_FOUR_HOURS);
+        }
+        break;
+        
       case 'trakt-recommendations':
         // Trakt recommendations require authentication
         if (!sessionId) {

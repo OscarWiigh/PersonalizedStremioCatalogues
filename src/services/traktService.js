@@ -296,8 +296,56 @@ async function mapTraktToMeta(item, type) {
   return meta;
 }
 
+/**
+ * Fetch items from a public Trakt list
+ * @param {string} username - Trakt username
+ * @param {string} listSlug - List slug/ID
+ * @param {number} cacheTTL - Optional cache TTL in milliseconds (defaults to 30 min)
+ * @returns {Promise<Array>} Array of movie metadata
+ */
+async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTTL) {
+  const cacheKey = `trakt:list:${username}:${listSlug}`;
+  const cached = await cache.get(cacheKey);
+  
+  if (cached) {
+    console.log(`💾 Serving Trakt list (${listSlug}) from cache (Redis)`);
+    return cached;
+  }
+
+  try {
+    const cacheHours = Math.floor(cacheTTL / (1000 * 60 * 60));
+    console.log(`🔍 Fetching FRESH Trakt list: ${username}/${listSlug} from API...`);
+    const url = `${config.trakt.apiUrl}/users/${username}/lists/${listSlug}/items/movie`;
+    const headers = await getTraktHeaders();
+    console.log(`📡 Trakt List URL: ${url}`);
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Trakt API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Trakt returned ${data.length} items from list (cached for ${cacheHours}h)`);
+    
+    // Map list items to metas
+    const metas = await Promise.all(data.map(item => {
+      // List items have the movie object nested
+      const movie = item.movie;
+      return mapTraktToMeta(movie, 'movie');
+    }));
+    
+    await cache.set(cacheKey, metas, cacheTTL);
+    return metas;
+  } catch (error) {
+    console.error(`❌ Error fetching Trakt list ${listSlug}:`, error.message);
+    return [];
+  }
+}
+
 module.exports = {
   getMovieRecommendations,
-  getSeriesRecommendations
+  getSeriesRecommendations,
+  getPublicList
 };
 
