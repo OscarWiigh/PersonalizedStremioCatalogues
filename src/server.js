@@ -168,6 +168,29 @@ app.get('/poster/stats', (req, res) => {
   res.json(stats);
 });
 
+// Admin endpoint to clear Netflix catalog cache
+app.get('/admin/clear-netflix-cache', async (req, res) => {
+  try {
+    const cache = require('./utils/cache');
+    await cache.clear('netflix:sweden:movies:top10');
+    await cache.clear('netflix:sweden:series:top10');
+    
+    res.json({
+      success: true,
+      message: 'Netflix catalog cache cleared! New requests will fetch fresh data with badge poster URLs.',
+      cleared: [
+        'netflix:sweden:movies:top10',
+        'netflix:sweden:series:top10'
+      ]
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Mount Stremio addon routes
 // Session is passed via query parameter (?session=xxx) and read in handlers via args.extra.session
 const addonRouter = getRouter(addonInterface);
