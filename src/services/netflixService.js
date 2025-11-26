@@ -8,8 +8,13 @@ const cache = require('../utils/cache');
  * @returns {string} Base URL
  */
 function getServerBaseUrl() {
-  // Check if we're running on Vercel
-  if (process.env.VERCEL_URL) {
+  // Use production URL if specified (recommended for Vercel)
+  if (process.env.PRODUCTION_URL) {
+    return process.env.PRODUCTION_URL;
+  }
+  
+  // Check if we're running on Vercel production
+  if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
   
