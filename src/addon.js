@@ -90,9 +90,10 @@ builder.defineCatalogHandler(async (args) => {
       case 'trakt-new-releases':
         // Public Trakt list - newly released movies (no auth needed)
         // Cached for 24 hours since list only updates once a day
+        // Sorted by popularity ascending (most popular first)
         if (type === 'movie') {
           const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-          metas = await traktService.getPublicList('leepmc1984', 'new-movie-releases-digital', TWENTY_FOUR_HOURS);
+          metas = await traktService.getPublicList('leepmc1984', 'new-movie-releases-digital', TWENTY_FOUR_HOURS, 'popularity,asc');
         }
         break;
         

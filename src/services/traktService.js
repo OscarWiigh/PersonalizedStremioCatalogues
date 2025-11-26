@@ -301,10 +301,11 @@ async function mapTraktToMeta(item, type) {
  * @param {string} username - Trakt username
  * @param {string} listSlug - List slug/ID
  * @param {number} cacheTTL - Optional cache TTL in milliseconds (defaults to 30 min)
+ * @param {string} sort - Optional sort parameter (e.g., 'popularity,asc')
  * @returns {Promise<Array>} Array of movie metadata
  */
-async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTTL) {
-  const cacheKey = `trakt:list:${username}:${listSlug}`;
+async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTTL, sort = null) {
+  const cacheKey = `trakt:list:${username}:${listSlug}${sort ? ':' + sort : ''}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
@@ -315,7 +316,13 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
   try {
     const cacheHours = Math.floor(cacheTTL / (1000 * 60 * 60));
     console.log(`🔍 Fetching FRESH Trakt list: ${username}/${listSlug} from API...`);
-    const url = `${config.trakt.apiUrl}/users/${username}/lists/${listSlug}/items/movie`;
+    
+    // Build URL with optional sort parameter
+    let url = `${config.trakt.apiUrl}/users/${username}/lists/${listSlug}/items/movie`;
+    if (sort) {
+      url += `?sort=${sort}`;
+    }
+    
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt List URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -326,7 +333,7 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
     }
 
     const data = await response.json();
-    console.log(`✅ Trakt returned ${data.length} items from list (cached for ${cacheHours}h)`);
+    console.log(`✅ Trakt returned ${data.length} items from list${sort ? ' (sorted by ' + sort + ')' : ''} (cached for ${cacheHours}h)`);
     
     // Map list items to metas
     const metas = await Promise.all(data.map(item => {
