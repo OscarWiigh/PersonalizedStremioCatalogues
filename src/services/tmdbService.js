@@ -266,11 +266,64 @@ function getGenreName(id) {
   return genreMap[id] || 'Unknown';
 }
 
+/**
+ * Fetch newly released popular movies (last 60 days)
+ * Uses TMDB Discover endpoint with date filtering and popularity sorting
+ * @returns {Promise<Array>} Array of movie metadata sorted by popularity
+ */
+async function getNewlyReleasedPopular() {
+  const cacheKey = 'tmdb:movies:newly-released-popular';
+  const cached = await cache.get(cacheKey);
+  
+  if (cached) {
+    console.log('💾 Serving newly released popular movies from cache (Redis)');
+    return cached;
+  }
+
+  try {
+    // Calculate date range: last 60 days
+    const today = new Date();
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(today.getDate() - 60);
+    
+    const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const startDate = sixtyDaysAgo.toISOString().split('T')[0];
+    
+    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (${startDate} to ${endDate})...`);
+    
+    // Use discover endpoint with filters
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&vote_count.gte=20&page=1`;
+    
+    console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ TMDB returned ${data.results.length} newly released movies (cached for 24h)`);
+    
+    // Limit to 50 results
+    const limitedResults = data.results.slice(0, 50);
+    const metas = await Promise.all(limitedResults.map(item => mapTMDBToMeta(item, 'movie')));
+    
+    // Cache for 24 hours
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    await cache.set(cacheKey, metas, TWENTY_FOUR_HOURS);
+    return metas;
+  } catch (error) {
+    console.error('❌ Error fetching newly released popular movies from TMDB:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   getTrendingMovies,
   getTrendingSeries,
   getNowPlayingMovies,
   getPopularSeries,
-  getNewAndPopular
+  getNewAndPopular,
+  getNewlyReleasedPopular
 };
 

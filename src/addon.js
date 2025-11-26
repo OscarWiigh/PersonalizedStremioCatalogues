@@ -88,13 +88,11 @@ builder.defineCatalogHandler(async (args) => {
     // Route to appropriate service based on catalog ID
     switch (id) {
       case 'trakt-new-releases':
-        // Public Trakt list - newly released movies (no auth needed)
-        // Cached for 24 hours since list only updates once a day
-        // Sorted by popularity descending (most popular first)
-        // Limited to 50 results
+        // TMDB newly released movies (no auth needed)
+        // Last 60 days, sorted by popularity descending (most popular first)
+        // Cached for 24 hours, limited to 50 results
         if (type === 'movie') {
-          const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-          metas = await traktService.getPublicList('leepmc1984', 'new-movie-releases-digital', TWENTY_FOUR_HOURS, 'popularity,desc', 50);
+          metas = await tmdbService.getNewlyReleasedPopular();
         }
         break;
         
