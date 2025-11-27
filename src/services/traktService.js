@@ -89,7 +89,8 @@ async function getMovieRecommendations(sessionId, skip = 0) {
     }
 
     console.log(`🔍 Fetching FRESH Trakt movie recommendations from API (page ${page})...`);
-    const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=20&page=${page}`;
+    // Match website behavior: ignore collected/watchlisted items
+    const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=20&page=${page}&ignore_collected=true&ignore_watchlisted=true`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -149,7 +150,8 @@ async function getSeriesRecommendations(sessionId, skip = 0) {
     }
 
     console.log(`🔍 Fetching FRESH Trakt series recommendations from API (page ${page})...`);
-    const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=20&page=${page}`;
+    // Match website behavior: ignore collected/watchlisted items
+    const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=20&page=${page}&ignore_collected=true&ignore_watchlisted=true`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
