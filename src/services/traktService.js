@@ -3,8 +3,8 @@ const { config } = require('../config');
 const cache = require('../utils/cache');
 const tokenManager = require('../utils/tokenManager');
 
-// Helper to get TMDB images only (cast removed for catalog performance)
-// Cast is only needed on detail pages, not in catalog listings
+// Helper to get TMDB poster only (optimized for TV performance)
+// Background and cast removed - only needed on detail pages, not in catalog listings
 async function getTMDBData(tmdbId, type) {
   if (!tmdbId || !config.tmdb.apiKey) {
     return null;
@@ -22,8 +22,9 @@ async function getTMDBData(tmdbId, type) {
     const data = await response.json();
     
     return {
-      poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w500${data.poster_path}` : null,
-      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${data.backdrop_path}` : null
+      // Use medium poster size for better TV performance (w342 instead of w500)
+      poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w342${data.poster_path}` : null
+      // Background removed - not shown in catalog view, only on detail pages
     };
   } catch (error) {
     return null;
@@ -65,14 +66,17 @@ async function getTraktHeaders() {
 
 /**
  * Fetch recommendations for movies
- * @returns {Promise<Array>} Array of movie metadata
+ * @param {string} sessionId - User session ID
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of movie metadata (max 20 items)
  */
-async function getMovieRecommendations() {
-  const cacheKey = 'trakt:movies:recommendations';
+async function getMovieRecommendations(sessionId, skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // Calculate page number (20 items per page)
+  const cacheKey = `trakt:movies:recommendations:${sessionId}:page${page}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
-    console.log('💾 Serving Trakt movie recommendations from cache (Redis)');
+    console.log(`💾 Serving Trakt movie recommendations page ${page} from cache (Redis)`);
     return cached;
   }
 
@@ -81,11 +85,11 @@ async function getMovieRecommendations() {
     const isAuth = tokenManager.isAuthenticated();
     if (!isAuth) {
       console.warn('⚠️  Not authenticated with Trakt, using trending instead');
-      return getTrendingMovies();
+      return getTrendingMovies(skip);
     }
 
-    console.log('🔍 Fetching FRESH Trakt movie recommendations from API...');
-    const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=50`;
+    console.log(`🔍 Fetching FRESH Trakt movie recommendations from API (page ${page})...`);
+    const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=20&page=${page}`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -107,7 +111,7 @@ async function getMovieRecommendations() {
     // If no recommendations, fall back to trending
     if (data.length === 0) {
       console.warn('⚠️  No personal recommendations found, using trending movies');
-      return getTrendingMovies();
+      return getTrendingMovies(skip);
     }
     
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'movie')));
@@ -116,20 +120,23 @@ async function getMovieRecommendations() {
     return metas;
   } catch (error) {
     console.error('Error fetching Trakt movie recommendations:', error.message);
-    return getTrendingMovies(); // Fallback to trending
+    return getTrendingMovies(skip); // Fallback to trending
   }
 }
 
 /**
  * Fetch recommendations for series
- * @returns {Promise<Array>} Array of series metadata
+ * @param {string} sessionId - User session ID
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of series metadata (max 20 items)
  */
-async function getSeriesRecommendations() {
-  const cacheKey = 'trakt:series:recommendations';
+async function getSeriesRecommendations(sessionId, skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // Calculate page number (20 items per page)
+  const cacheKey = `trakt:series:recommendations:${sessionId}:page${page}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
-    console.log('💾 Serving Trakt series recommendations from cache (Redis)');
+    console.log(`💾 Serving Trakt series recommendations page ${page} from cache (Redis)`);
     return cached;
   }
 
@@ -138,11 +145,11 @@ async function getSeriesRecommendations() {
     const isAuth = tokenManager.isAuthenticated();
     if (!isAuth) {
       console.warn('⚠️  Not authenticated with Trakt, using trending instead');
-      return getTrendingSeries();
+      return getTrendingSeries(skip);
     }
 
-    console.log('🔍 Fetching FRESH Trakt series recommendations from API...');
-    const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=50`;
+    console.log(`🔍 Fetching FRESH Trakt series recommendations from API (page ${page})...`);
+    const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=20&page=${page}`;
     const headers = await getTraktHeaders();
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
@@ -151,7 +158,7 @@ async function getSeriesRecommendations() {
       console.error(`❌ Trakt API error: ${response.status} ${response.statusText}`);
       if (response.status === 401) {
         console.warn('⚠️  Trakt token expired or invalid, falling back to trending');
-        return getTrendingSeries();
+        return getTrendingSeries(skip);
       }
       throw new Error(`Trakt API error: ${response.status}`);
     }
@@ -162,7 +169,7 @@ async function getSeriesRecommendations() {
     // If no recommendations, fall back to trending
     if (data.length === 0) {
       console.warn('⚠️  No personal recommendations found, using trending series');
-      return getTrendingSeries();
+      return getTrendingSeries(skip);
     }
     
     const metas = await Promise.all(data.map(item => mapTraktToMeta(item, 'series')));
@@ -171,26 +178,28 @@ async function getSeriesRecommendations() {
     return metas;
   } catch (error) {
     console.error('Error fetching Trakt series recommendations:', error.message);
-    return getTrendingSeries(); // Fallback to trending
+    return getTrendingSeries(skip); // Fallback to trending
   }
 }
 
 /**
  * Fetch trending movies as fallback
- * @returns {Promise<Array>} Array of movie metadata
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of movie metadata (max 20 items)
  */
-async function getTrendingMovies() {
-  const cacheKey = 'trakt:movies:trending';
+async function getTrendingMovies(skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // Calculate page number (20 items per page)
+  const cacheKey = `trakt:movies:trending:page${page}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
-    console.log('💾 Serving Trakt trending movies from cache (Redis)');
+    console.log(`💾 Serving Trakt trending movies page ${page} from cache (Redis)`);
     return cached;
   }
 
   try {
-    console.log('🔍 Fetching FRESH Trakt trending movies from API...');
-    const url = `${config.trakt.apiUrl}/movies/trending?extended=full&limit=50`;
+    console.log(`🔍 Fetching FRESH Trakt trending movies from API (page ${page})...`);
+    const url = `${config.trakt.apiUrl}/movies/trending?extended=full&limit=20&page=${page}`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
 
@@ -213,20 +222,22 @@ async function getTrendingMovies() {
 
 /**
  * Fetch trending series as fallback
- * @returns {Promise<Array>} Array of series metadata
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of series metadata (max 20 items)
  */
-async function getTrendingSeries() {
-  const cacheKey = 'trakt:series:trending';
+async function getTrendingSeries(skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // Calculate page number (20 items per page)
+  const cacheKey = `trakt:series:trending:page${page}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
-    console.log('💾 Serving Trakt trending series from cache (Redis)');
+    console.log(`💾 Serving Trakt trending series page ${page} from cache (Redis)`);
     return cached;
   }
 
   try {
-    console.log('🔍 Fetching FRESH Trakt trending series from API...');
-    const url = `${config.trakt.apiUrl}/shows/trending?extended=full&limit=50`;
+    console.log(`🔍 Fetching FRESH Trakt trending series from API (page ${page})...`);
+    const url = `${config.trakt.apiUrl}/shows/trending?extended=full&limit=20&page=${page}`;
     const headers = await getTraktHeaders();
     const response = await fetch(url, { headers });
 
@@ -263,12 +274,11 @@ async function mapTraktToMeta(item, type) {
     imdbRating: item.rating ? item.rating.toFixed(1) : undefined,
   };
 
-  // Get images from TMDB if available (cast removed for catalog performance)
+  // Get poster from TMDB if available (background removed for TV performance)
   if (item.ids && item.ids.tmdb) {
     const tmdbData = await getTMDBData(item.ids.tmdb, type);
     if (tmdbData) {
       meta.poster = tmdbData.poster;
-      meta.background = tmdbData.background;
     }
   }
 

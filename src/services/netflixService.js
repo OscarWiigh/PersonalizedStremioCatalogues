@@ -319,12 +319,11 @@ async function scrapeNetflixTop10(type) {
           description: tmdbData.overview || `#${item.rank} on Netflix Sweden Top 10`,
           // Use custom poster endpoint with Netflix rank badge
           poster: `${baseUrl}/poster/${itemType}/${item.rank}/${encodeURIComponent(itemId)}.jpg`,
-          background: tmdbData.backdrop_path ? `${config.tmdb.imageBaseUrl}/original${tmdbData.backdrop_path}` : undefined,
+          // Background and cast removed for TV performance - only needed on detail pages
           genres: tmdbData.genreNames || ['Netflix Top 10', 'Popular'],
           releaseInfo: tmdbData.release_date ? tmdbData.release_date.substring(0, 4) : 
                       tmdbData.first_air_date ? tmdbData.first_air_date.substring(0, 4) : '2024',
-          imdbRating: tmdbData.vote_average ? tmdbData.vote_average.toFixed(1) : undefined,
-          cast: tmdbData.cast || []
+          imdbRating: tmdbData.vote_average ? tmdbData.vote_average.toFixed(1) : undefined
         };
         
         console.log(`   ✅ Enriched with full metadata + Netflix badge`);

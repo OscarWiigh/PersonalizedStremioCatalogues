@@ -79,8 +79,9 @@ function extractSession(args) {
 builder.defineCatalogHandler(async (args) => {
   const { type, id, extra } = args;
   const sessionId = extractSession(args);
+  const skip = extra?.skip ? parseInt(extra.skip) : 0;
   
-  console.log(`📺 Catalog request: type=${type}, id=${id}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
+  console.log(`📺 Catalog request: type=${type}, id=${id}, skip=${skip}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
   try {
     let metas = [];
@@ -91,9 +92,9 @@ builder.defineCatalogHandler(async (args) => {
         // TMDB newly released movies (no auth needed)
         // Last 30 days (1 month), digital/physical releases only
         // Sorted by popularity descending (most popular first)
-        // Cached for 24 hours, limited to 50 results
+        // Cached for 24 hours, limited to 20 items per page
         if (type === 'movie') {
-          metas = await tmdbService.getNewlyReleasedPopular();
+          metas = await tmdbService.getNewlyReleasedPopular(skip);
         }
         break;
         
@@ -112,14 +113,14 @@ builder.defineCatalogHandler(async (args) => {
         }
         
         if (type === 'movie') {
-          metas = await traktService.getMovieRecommendations(sessionId);
+          metas = await traktService.getMovieRecommendations(sessionId, skip);
         } else if (type === 'series') {
-          metas = await traktService.getSeriesRecommendations(sessionId);
+          metas = await traktService.getSeriesRecommendations(sessionId, skip);
         }
         break;
         
       case 'netflix-sweden-top10':
-        // Netflix Top 10 is public, no authentication needed
+        // Netflix Top 10 is public, no authentication needed (always 10 items)
         if (type === 'movie') {
           metas = await netflixService.getNetflixTop10Movies();
         }

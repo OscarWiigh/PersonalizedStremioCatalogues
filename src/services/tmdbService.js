@@ -188,12 +188,11 @@ async function mapTMDBToMeta(item, type) {
     id: `tmdb:${item.id}`, // Temporary, will be replaced with IMDB ID if available
     type: type,
     name: title,
+    // Use medium poster size for better TV performance (w342 instead of w500)
     poster: item.poster_path 
-      ? `${config.tmdb.imageBaseUrl}/w500${item.poster_path}`
+      ? `${config.tmdb.imageBaseUrl}/w342${item.poster_path}`
       : undefined,
-    background: item.backdrop_path
-      ? `${config.tmdb.imageBaseUrl}/original${item.backdrop_path}`
-      : undefined,
+    // Background removed - not shown in catalog view, only on detail pages
     description: item.overview || '',
     releaseInfo: releaseDate ? releaseDate.substring(0, 4) : '',
     imdbRating: item.vote_average ? item.vote_average.toFixed(1) : undefined,
@@ -270,14 +269,16 @@ function getGenreName(id) {
  * Fetch newly released popular movies (last 30 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * Filters for digital and physical releases only
- * @returns {Promise<Array>} Array of movie metadata sorted by popularity
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of movie metadata sorted by popularity (max 20 items)
  */
-async function getNewlyReleasedPopular() {
-  const cacheKey = 'tmdb:movies:newly-released-popular';
+async function getNewlyReleasedPopular(skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // TMDB pages are 1-indexed, 20 items per page
+  const cacheKey = `tmdb:movies:newly-released-popular:page${page}`;
   const cached = await cache.get(cacheKey);
   
   if (cached) {
-    console.log('💾 Serving newly released popular movies from cache (Redis)');
+    console.log(`💾 Serving newly released popular movies page ${page} from cache (Redis)`);
     return cached;
   }
 
@@ -290,7 +291,7 @@ async function getNewlyReleasedPopular() {
     const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
     const startDate = oneMonthAgo.toISOString().split('T')[0];
     
-    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last 30 days: ${startDate} to ${endDate})...`);
+    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last 30 days: ${startDate} to ${endDate}, page ${page})...`);
     
     // Use discover endpoint with filters matching TMDB's website exactly
     // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
@@ -298,7 +299,8 @@ async function getNewlyReleasedPopular() {
     // vote_count.gte=50: At least 50 votes for quality
     // vote_average: 0-10 range
     // with_runtime: 0-400 minutes
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=1`;
+    // page: For pagination (20 items per page)
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=${page}`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
@@ -310,9 +312,8 @@ async function getNewlyReleasedPopular() {
     const data = await response.json();
     console.log(`✅ TMDB returned ${data.results.length} newly released movies (digital/physical only, cached for 24h)`);
     
-    // Limit to 50 results
-    const limitedResults = data.results.slice(0, 50);
-    const metas = await Promise.all(limitedResults.map(item => mapTMDBToMeta(item, 'movie')));
+    // TMDB returns 20 items per page by default, perfect for our needs
+    const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'movie')));
     
     // Cache for 24 hours
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
