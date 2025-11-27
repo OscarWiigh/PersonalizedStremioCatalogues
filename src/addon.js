@@ -131,14 +131,9 @@ builder.defineCatalogHandler(async (args) => {
         return { metas: [] };
     }
     
-    // Apply skip/pagination if provided
-    const skip = parseInt(extra?.skip) || 0;
-    const limit = 100;
-    const paginatedMetas = metas.slice(skip, skip + limit);
+    console.log(`✅ Returning ${metas.length} items for ${id} (${type})`);
     
-    console.log(`✅ Returning ${paginatedMetas.length} items for ${id} (${type})`);
-    
-    return { metas: paginatedMetas };
+    return { metas };
   } catch (error) {
     console.error(`❌ Error handling catalog ${id}:`, error.message);
     return { metas: [] };
