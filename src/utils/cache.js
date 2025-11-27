@@ -112,6 +112,48 @@ class Cache {
   }
 
   /**
+   * Clear all keys matching a pattern
+   * @param {string} pattern - Pattern to match (e.g., "trakt:movies:*")
+   * @returns {Promise<number>} Number of keys cleared
+   */
+  async clearPattern(pattern) {
+    const redis = await getRedisClient();
+    
+    if (redis) {
+      try {
+        // Use Redis SCAN to find matching keys
+        const keys = await redis.keys(pattern);
+        
+        if (keys.length > 0) {
+          await redis.del(...keys);
+          console.log(`🗑️  Cache CLEAR (Redis): ${keys.length} keys matching "${pattern}"`);
+          return keys.length;
+        } else {
+          console.log(`ℹ️  No Redis keys found matching "${pattern}"`);
+          return 0;
+        }
+      } catch (error) {
+        console.error(`❌ Redis clearPattern error:`, error.message);
+        // Fall through
+      }
+    }
+
+    // Fallback to in-memory
+    let count = 0;
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    
+    for (const key of this.store.keys()) {
+      if (regex.test(key)) {
+        this.store.delete(key);
+        count++;
+      }
+    }
+    
+    console.log(`🗑️  Cache CLEAR (memory): ${count} keys matching "${pattern}"`);
+    return count;
+  }
+
+  /**
    * Get cache statistics
    * @returns {Promise<object>} Cache stats
    */

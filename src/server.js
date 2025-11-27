@@ -170,32 +170,45 @@ app.get('/poster/stats', (req, res) => {
   res.json(stats);
 });
 
-// Admin endpoint to clear Netflix catalog cache
 // Admin endpoint to clear all catalog caches
 app.get('/admin/clear-cache', async (req, res) => {
   try {
     const cache = require('./utils/cache');
     
-    // Clear all catalog caches
-    const cacheKeys = [
-      // TMDB newly released popular (digital/physical releases)
-      'tmdb:movies:newly-released-popular',
+    // Clear all catalog caches using pattern matching
+    const cachePatterns = [
+      // TMDB newly released (all pages)
+      'tmdb:movies:newly-released-popular:*',
       // Netflix Top 10
       'netflix:sweden:movies:top10',
       'netflix:sweden:series:top10',
-      // Trakt recommendations (note: these are per-session, so we clear the pattern)
-      'trakt:movies:recommendations',
-      'trakt:series:recommendations'
+      // Trakt recommendations (all sessions and pages)
+      'trakt:movies:recommendations:*',
+      'trakt:series:recommendations:*',
+      // Trakt trending (all pages)
+      'trakt:movies:trending:*',
+      'trakt:series:trending:*'
     ];
     
-    for (const key of cacheKeys) {
-      await cache.clear(key);
+    let totalCleared = 0;
+    
+    for (const pattern of cachePatterns) {
+      if (pattern.includes('*')) {
+        // Use pattern matching for wildcard keys
+        const count = await cache.clearPattern(pattern);
+        totalCleared += count;
+      } else {
+        // Use direct clear for specific keys
+        await cache.clear(pattern);
+        totalCleared++;
+      }
     }
     
     res.json({
       success: true,
-      message: 'All catalog caches cleared! Next requests will fetch fresh data from APIs.',
-      cleared: cacheKeys,
+      message: `All catalog caches cleared! ${totalCleared} cache entries deleted. Next requests will fetch fresh data from APIs.`,
+      cleared: cachePatterns,
+      totalCleared,
       catalogs: [
         '🆕 Newly Released (TMDB)',
         '🎬 Netflix Sweden Top 10',
