@@ -327,6 +327,7 @@ async function getNewlyReleasedPopular(skip = 0) {
 
 /**
  * Fetch newly released popular TV shows (last 30 days)
+ * Includes both brand new shows AND new seasons of existing shows
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of series metadata sorted by popularity (max 20 items)
@@ -353,12 +354,12 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
     console.log(`🔍 Fetching FRESH newly released popular series from TMDB (last 30 days: ${startDate} to ${endDate}, page ${page})...`);
     
     // Use discover endpoint for TV shows
-    // first_air_date: Date of first episode airing
+    // air_date: Date of ANY episode airing (includes new seasons of existing shows)
     // watch_region=SE: Available in Sweden
     // vote_count.gte=50: At least 50 votes for quality
     // vote_average: 0-10 range
     // page: For pagination (20 items per page)
-    const url = `${config.tmdb.apiUrl}/discover/tv?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&first_air_date.gte=${startDate}&first_air_date.lte=${endDate}&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&watch_region=SE&page=${page}`;
+    const url = `${config.tmdb.apiUrl}/discover/tv?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&air_date.gte=${startDate}&air_date.lte=${endDate}&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&watch_region=SE&page=${page}`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
