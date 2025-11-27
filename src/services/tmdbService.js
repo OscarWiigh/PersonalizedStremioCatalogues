@@ -325,12 +325,73 @@ async function getNewlyReleasedPopular(skip = 0) {
   }
 }
 
+/**
+ * Fetch newly released popular TV shows (last 30 days)
+ * Uses TMDB Discover endpoint with date filtering and popularity sorting
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of series metadata sorted by popularity (max 20 items)
+ */
+async function getNewlyReleasedPopularSeries(skip = 0) {
+  const page = Math.floor(skip / 20) + 1; // TMDB pages are 1-indexed, 20 items per page
+  const cacheKey = `tmdb:series:newly-released-popular:page${page}`;
+  const cached = await cache.get(cacheKey);
+  
+  if (cached) {
+    console.log(`💾 Serving newly released popular series page ${page} from cache (Redis)`);
+    return cached;
+  }
+
+  try {
+    // Calculate date range: last 30 days (1 month) dynamically
+    const today = new Date();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(today.getDate() - 30);
+    
+    const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const startDate = oneMonthAgo.toISOString().split('T')[0];
+    
+    console.log(`🔍 Fetching FRESH newly released popular series from TMDB (last 30 days: ${startDate} to ${endDate}, page ${page})...`);
+    
+    // Use discover endpoint for TV shows
+    // first_air_date: Date of first episode airing
+    // watch_region=SE: Available in Sweden
+    // vote_count.gte=50: At least 50 votes for quality
+    // vote_average: 0-10 range
+    // page: For pagination (20 items per page)
+    const url = `${config.tmdb.apiUrl}/discover/tv?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&first_air_date.gte=${startDate}&first_air_date.lte=${endDate}&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&watch_region=SE&page=${page}`;
+    
+    console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ TMDB returned ${data.results.length} newly released popular series (cached for 24h)`);
+    
+    // Map TMDB data to Stremio meta format
+    const metas = await Promise.all(
+      data.results.map(show => mapTMDBToMeta(show, 'series'))
+    );
+
+    // Cache for 24 hours (matches catalog refresh cycle)
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    await cache.set(cacheKey, metas, TWENTY_FOUR_HOURS);
+    return metas;
+  } catch (error) {
+    console.error('❌ Error fetching newly released popular series from TMDB:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   getTrendingMovies,
   getTrendingSeries,
   getNowPlayingMovies,
   getPopularSeries,
   getNewAndPopular,
-  getNewlyReleasedPopular
+  getNewlyReleasedPopular,
+  getNewlyReleasedPopularSeries
 };
 

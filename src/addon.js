@@ -15,7 +15,7 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personalized Catalog',
-  description: 'Newly released movies (TMDB), Netflix Sweden Top 10, and personalized Trakt recommendations.',
+  description: 'Newly released movies & shows (TMDB), Netflix Sweden Top 10, and personalized Trakt recommendations.',
   logo: 'https://stremiocatalogues.vercel.app/icon.png',
   
   resources: ['catalog', 'stream'],
@@ -25,6 +25,14 @@ const manifest = {
     // Newly Released Movies (TMDB)
     {
       type: 'movie',
+      id: 'tmdb-new-releases',
+      name: 'Newly Released',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    
+    // Newly Released Series (TMDB)
+    {
+      type: 'series',
       id: 'tmdb-new-releases',
       name: 'Newly Released',
       extra: [{ name: 'skip', isRequired: false }]
@@ -89,12 +97,14 @@ builder.defineCatalogHandler(async (args) => {
     // Route to appropriate service based on catalog ID
     switch (id) {
       case 'tmdb-new-releases':
-        // TMDB newly released movies (no auth needed)
-        // Last 30 days (1 month), digital/physical releases only
+        // TMDB newly released movies/series (no auth needed)
+        // Last 30 days (1 month)
         // Sorted by popularity descending (most popular first)
         // Cached for 24 hours, limited to 20 items per page
         if (type === 'movie') {
           metas = await tmdbService.getNewlyReleasedPopular(skip);
+        } else if (type === 'series') {
+          metas = await tmdbService.getNewlyReleasedPopularSeries(skip);
         }
         break;
         

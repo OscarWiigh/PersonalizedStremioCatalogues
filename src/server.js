@@ -179,6 +179,7 @@ app.get('/admin/clear-cache', async (req, res) => {
     const cachePatterns = [
       // TMDB newly released (all pages)
       'tmdb:movies:newly-released-popular:*',
+      'tmdb:series:newly-released-popular:*',
       // Netflix Top 10
       'netflix:sweden:movies:top10',
       'netflix:sweden:series:top10',
@@ -210,7 +211,8 @@ app.get('/admin/clear-cache', async (req, res) => {
       cleared: cachePatterns,
       totalCleared,
       catalogs: [
-        '🆕 Newly Released (TMDB)',
+        '🆕 Newly Released Movies (TMDB)',
+        '🆕 Newly Released Series (TMDB)',
         '🎬 Netflix Sweden Top 10',
         '⭐ Trakt Recommendations (Movies)',
         '📺 Trakt Recommendations (Series)'
@@ -267,8 +269,9 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     console.log('   5. Authenticate and get your personalized addon URL');
     console.log('');
     console.log('📚 Available Catalogs:');
-    console.log('   • Your Personal Recommendations (requires auth)');
+    console.log('   • Newly Released Movies & Series (TMDB)');
     console.log('   • Netflix Sweden Top 10 (public)');
+    console.log('   • Your Personal Recommendations (requires auth)');
     console.log('');
     console.log('Press Ctrl+C to stop the server');
     console.log('');
