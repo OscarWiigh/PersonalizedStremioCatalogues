@@ -77,9 +77,9 @@ function extractSession(args) {
  * Routes catalog requests to appropriate service (session-aware)
  */
 builder.defineCatalogHandler(async (args) => {
-  const { type, id, extra } = args;
+  const { type, id, extra = {} } = args;
   const sessionId = extractSession(args);
-  const skip = extra?.skip ? parseInt(extra.skip) : 0;
+  const skip = parseInt(extra.skip || 0);
   
   console.log(`📺 Catalog request: type=${type}, id=${id}, skip=${skip}, session=${sessionId ? sessionId.substring(0, 8) + '...' : 'none'}`);
   
