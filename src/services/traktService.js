@@ -38,27 +38,29 @@ async function getTMDBData(tmdbId, type) {
 
 /**
  * Get Trakt headers with OAuth token
+ * @param {string} [sessionId] - User session ID (optional, for authenticated endpoints)
  * @returns {Promise<object>} Headers object
  */
-async function getTraktHeaders() {
+async function getTraktHeaders(sessionId = null) {
   const headers = {
     'Content-Type': 'application/json',
-    'trakt-api-version': '2'
+    'trakt-api-version': '2',
+    'trakt-api-key': config.trakt.clientId
   };
   
-  // Try to get OAuth token
-  const token = await tokenManager.getAccessToken();
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  // Also add client ID for API access (from stored tokens or env)
-  const tokens = tokenManager.loadTokens();
-  const clientId = tokens?.client_id || config.trakt.clientId;
-  
-  if (clientId) {
-    headers['trakt-api-key'] = clientId;
+  // If sessionId provided, try to get OAuth token for this specific session
+  if (sessionId) {
+    const token = await tokenManager.getAccessToken(sessionId);
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Try to use session-specific client ID if available
+    const tokens = await tokenManager.loadTokens(sessionId);
+    if (tokens?.client_id) {
+      headers['trakt-api-key'] = tokens.client_id;
+    }
   }
   
   return headers;
@@ -82,7 +84,7 @@ async function getMovieRecommendations(sessionId, skip = 0) {
 
   try {
     // Check if user is authenticated
-    const isAuth = tokenManager.isAuthenticated();
+    const isAuth = await tokenManager.isAuthenticated(sessionId);
     if (!isAuth) {
       console.warn('⚠️  Not authenticated with Trakt, using trending instead');
       return getTrendingMovies(skip);
@@ -91,7 +93,7 @@ async function getMovieRecommendations(sessionId, skip = 0) {
     console.log(`🔍 Fetching FRESH Trakt movie recommendations from API (page ${page})...`);
     // Match website behavior: ignore collected/watchlisted items
     const url = `${config.trakt.apiUrl}/recommendations/movies?extended=full&limit=20&page=${page}&ignore_collected=true&ignore_watchlisted=true`;
-    const headers = await getTraktHeaders();
+    const headers = await getTraktHeaders(sessionId);
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
 
@@ -143,7 +145,7 @@ async function getSeriesRecommendations(sessionId, skip = 0) {
 
   try {
     // Check if user is authenticated
-    const isAuth = tokenManager.isAuthenticated();
+    const isAuth = await tokenManager.isAuthenticated(sessionId);
     if (!isAuth) {
       console.warn('⚠️  Not authenticated with Trakt, using trending instead');
       return getTrendingSeries(skip);
@@ -152,7 +154,7 @@ async function getSeriesRecommendations(sessionId, skip = 0) {
     console.log(`🔍 Fetching FRESH Trakt series recommendations from API (page ${page})...`);
     // Match website behavior: ignore collected/watchlisted items
     const url = `${config.trakt.apiUrl}/recommendations/shows?extended=full&limit=20&page=${page}&ignore_collected=true&ignore_watchlisted=true`;
-    const headers = await getTraktHeaders();
+    const headers = await getTraktHeaders(sessionId);
     console.log(`📡 Trakt URL: ${url}`);
     const response = await fetch(url, { headers });
 
