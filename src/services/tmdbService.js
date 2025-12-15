@@ -268,7 +268,7 @@ function getGenreName(id) {
 /**
  * Fetch newly released popular movies (last 30 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
- * Filters for digital and physical releases only
+ * Filters for digital and physical releases only, with rating above 6.0
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of movie metadata sorted by popularity (max 20 items)
  */
@@ -297,10 +297,10 @@ async function getNewlyReleasedPopular(skip = 0) {
     // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
     // watch_region=SE: Available in Sweden
     // vote_count.gte=50: At least 50 votes for quality
-    // vote_average: 0-10 range
+    // vote_average: 6-10 range (only good movies)
     // with_runtime: 0-400 minutes
     // page: For pagination (20 items per page)
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=0&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=${page}`;
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=6&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=${page}`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
