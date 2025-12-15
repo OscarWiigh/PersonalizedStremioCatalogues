@@ -269,6 +269,7 @@ function getGenreName(id) {
  * Fetch newly released popular movies (last 30 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * Filters for digital and physical releases only, with rating above 6.0
+ * Excludes Tamil, Chinese, Japanese, and Russian language content
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of movie metadata sorted by popularity (max 20 items)
  */
@@ -299,8 +300,9 @@ async function getNewlyReleasedPopular(skip = 0) {
     // vote_count.gte=50: At least 50 votes for quality
     // vote_average: 6-10 range (only good movies)
     // with_runtime: 0-400 minutes
+    // without_original_language: Exclude Tamil, Chinese, Japanese, Russian
     // page: For pagination (20 items per page)
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=6&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&page=${page}`;
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&release_date.gte=${startDate}&release_date.lte=${endDate}&with_release_type=4|5&vote_count.gte=50&vote_average.gte=6&vote_average.lte=10&with_runtime.gte=0&with_runtime.lte=400&watch_region=SE&without_original_language=ta,zh,ja,ru&page=${page}`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
@@ -328,7 +330,8 @@ async function getNewlyReleasedPopular(skip = 0) {
 /**
  * Fetch newly released popular TV shows (last 30 days)
  * Includes both brand new shows AND new seasons of existing shows
- * Filters to only shows that premiered in the last 5 years (no old shows with new episodes)
+ * Filters to only shows that premiered in the last 10 years (no very old shows with new episodes)
+ * Excludes Tamil, Chinese, Japanese, and Russian language content
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of series metadata sorted by popularity (max 20 items)
@@ -352,21 +355,22 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
     const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
     const startDate = oneMonthAgo.toISOString().split('T')[0];
     
-    // Calculate first air date limit: 5 years ago (to exclude old shows)
-    const fiveYearsAgo = new Date();
-    fiveYearsAgo.setFullYear(today.getFullYear() - 5);
-    const showMinDate = fiveYearsAgo.toISOString().split('T')[0];
+    // Calculate first air date limit: 10 years ago (to exclude very old shows)
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(today.getFullYear() - 10);
+    const showMinDate = tenYearsAgo.toISOString().split('T')[0];
     
     console.log(`🔍 Fetching FRESH newly released popular series from TMDB (episodes: ${startDate} to ${endDate}, shows from ${showMinDate} onwards, page ${page})...`);
     
     // Use discover endpoint for TV shows
     // air_date: Date of ANY episode airing (includes new seasons of existing shows)
-    // first_air_date.gte: Only shows that premiered in the last 5 years (no old shows)
+    // first_air_date.gte: Only shows that premiered in the last 10 years (no very old shows)
     // watch_region=SE: Available in Sweden
     // vote_count.gte=50: At least 50 votes for quality
     // vote_average: 6-10 range (only good shows)
+    // without_original_language: Exclude Tamil, Chinese, Japanese, Russian
     // page: For pagination (20 items per page)
-    const url = `${config.tmdb.apiUrl}/discover/tv?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&air_date.gte=${startDate}&air_date.lte=${endDate}&first_air_date.gte=${showMinDate}&vote_count.gte=50&vote_average.gte=6&vote_average.lte=10&watch_region=SE&page=${page}`;
+    const url = `${config.tmdb.apiUrl}/discover/tv?api_key=${config.tmdb.apiKey}&sort_by=popularity.desc&air_date.gte=${startDate}&air_date.lte=${endDate}&first_air_date.gte=${showMinDate}&vote_count.gte=50&vote_average.gte=6&vote_average.lte=10&watch_region=SE&without_original_language=ta,zh,ja,ru&page=${page}`;
     
     console.log(`📡 TMDB Discover URL: ${url.replace(config.tmdb.apiKey, 'API_KEY')}`);
     const response = await fetch(url);
