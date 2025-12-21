@@ -192,7 +192,10 @@ async function mapTMDBToMeta(item, type) {
     poster: item.poster_path 
       ? `${config.tmdb.imageBaseUrl}/w342${item.poster_path}`
       : undefined,
-    // Background removed - not shown in catalog view, only on detail pages
+    // Use smallest backdrop size (w300) for fast loading - blurred anyway so quality doesn't matter
+    background: item.backdrop_path
+      ? `${config.tmdb.imageBaseUrl}/w300${item.backdrop_path}`
+      : undefined,
     description: item.overview || '',
     releaseInfo: releaseDate ? releaseDate.substring(0, 4) : '',
     imdbRating: item.vote_average ? item.vote_average.toFixed(1) : undefined,

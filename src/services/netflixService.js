@@ -319,7 +319,10 @@ async function scrapeNetflixTop10(type) {
           description: tmdbData.overview || `#${item.rank} on Netflix Sweden Top 10`,
           // Use custom poster endpoint with Netflix rank badge
           poster: `${baseUrl}/poster/${itemType}/${item.rank}/${encodeURIComponent(itemId)}.jpg`,
-          // Background and cast removed for TV performance - only needed on detail pages
+          // Use smallest backdrop size (w300) for fast loading - blurred anyway so quality doesn't matter
+          background: tmdbData.backdrop_path 
+            ? `${config.tmdb.imageBaseUrl}/w300${tmdbData.backdrop_path}`
+            : undefined,
           genres: tmdbData.genreNames || ['Netflix Top 10', 'Popular'],
           releaseInfo: tmdbData.release_date ? tmdbData.release_date.substring(0, 4) : 
                       tmdbData.first_air_date ? tmdbData.first_air_date.substring(0, 4) : '2024',

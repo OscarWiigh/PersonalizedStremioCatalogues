@@ -3,8 +3,7 @@ const { config } = require('../config');
 const cache = require('../utils/cache');
 const tokenManager = require('../utils/tokenManager');
 
-// Helper to get TMDB poster only (optimized for TV performance)
-// Background and cast removed - only needed on detail pages, not in catalog listings
+// Helper to get TMDB poster and lightweight background (optimized for TV performance)
 async function getTMDBData(tmdbId, type) {
   if (!tmdbId || !config.tmdb.apiKey) {
     return null;
@@ -23,8 +22,9 @@ async function getTMDBData(tmdbId, type) {
     
     return {
       // Use medium poster size for better TV performance (w342 instead of w500)
-      poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w342${data.poster_path}` : null
-      // Background removed - not shown in catalog view, only on detail pages
+      poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w342${data.poster_path}` : null,
+      // Use smallest backdrop size (w300) for fast loading - blurred anyway so quality doesn't matter
+      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/w300${data.backdrop_path}` : null
     };
   } catch (error) {
     return null;
@@ -278,11 +278,12 @@ async function mapTraktToMeta(item, type) {
     imdbRating: item.rating ? item.rating.toFixed(1) : undefined,
   };
 
-  // Get poster from TMDB if available (background removed for TV performance)
+  // Get poster and background from TMDB if available
   if (item.ids && item.ids.tmdb) {
     const tmdbData = await getTMDBData(item.ids.tmdb, type);
     if (tmdbData) {
       meta.poster = tmdbData.poster;
+      meta.background = tmdbData.background;
     }
   }
 
