@@ -23,8 +23,8 @@ async function getTMDBData(tmdbId, type) {
     return {
       // Use medium poster size for better TV performance (w342 instead of w500)
       poster: data.poster_path ? `${config.tmdb.imageBaseUrl}/w342${data.poster_path}` : null,
-      // Use smallest backdrop size (w300) for fast loading - blurred anyway so quality doesn't matter
-      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/w300${data.backdrop_path}` : null
+      // Use medium backdrop size (w780) for good quality on 4K TVs while staying lightweight (~30-50KB)
+      background: data.backdrop_path ? `${config.tmdb.imageBaseUrl}/w780${data.backdrop_path}` : null
     };
   } catch (error) {
     return null;

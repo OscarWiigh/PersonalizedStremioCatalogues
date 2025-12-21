@@ -192,9 +192,9 @@ async function mapTMDBToMeta(item, type) {
     poster: item.poster_path 
       ? `${config.tmdb.imageBaseUrl}/w342${item.poster_path}`
       : undefined,
-    // Use smallest backdrop size (w300) for fast loading - blurred anyway so quality doesn't matter
+    // Use medium backdrop size (w780) for good quality on 4K TVs while staying lightweight (~30-50KB)
     background: item.backdrop_path
-      ? `${config.tmdb.imageBaseUrl}/w300${item.backdrop_path}`
+      ? `${config.tmdb.imageBaseUrl}/w780${item.backdrop_path}`
       : undefined,
     description: item.overview || '',
     releaseInfo: releaseDate ? releaseDate.substring(0, 4) : '',
