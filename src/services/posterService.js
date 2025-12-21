@@ -6,36 +6,35 @@ const path = require('path');
 /**
  * Poster Service
  * Adds Netflix-style rank badges to movie/series posters
- * Uses embedded Bebas Neue font for crisp text rendering
+ * Uses pre-rendered badge images for reliable rendering on Vercel
  */
 
 // In-memory cache for processed posters
 const posterCache = new Map();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// Load and cache the base64 font at startup
-let cachedFontBase64 = null;
+// Cache for badge images (loaded once at startup)
+const badgeCache = new Map();
 
 /**
- * Get the base64-encoded font data
- * Loads from file once and caches in memory
- * @returns {string} Base64-encoded font data
+ * Get the pre-rendered badge image buffer
+ * @param {number} rank - Rank number (1-10)
+ * @returns {Buffer} Badge PNG buffer
  */
-function getFontBase64() {
-  if (cachedFontBase64) {
-    return cachedFontBase64;
+function getBadgeBuffer(rank) {
+  if (badgeCache.has(rank)) {
+    return badgeCache.get(rank);
   }
   
   try {
-    const fontPath = path.join(__dirname, '../../fonts/BebasNeue.woff2');
-    const fontBuffer = fs.readFileSync(fontPath);
-    cachedFontBase64 = fontBuffer.toString('base64');
-    console.log('✅ Loaded Bebas Neue font for badge rendering');
-    return cachedFontBase64;
+    const badgePath = path.join(__dirname, '../../public/badges', `${rank}.png`);
+    const buffer = fs.readFileSync(badgePath);
+    badgeCache.set(rank, buffer);
+    console.log(`✅ Loaded badge image for rank ${rank}`);
+    return buffer;
   } catch (error) {
-    console.error('❌ Failed to load font file:', error.message);
-    // Return a fallback - will use system font
-    return null;
+    console.error(`❌ Failed to load badge for rank ${rank}:`, error.message);
+    throw error;
   }
 }
 
@@ -53,63 +52,8 @@ function cleanExpiredCache() {
 }
 
 /**
- * Create a Netflix-style rank badge SVG
- * Uses embedded Bebas Neue font for crisp text rendering
- * @param {number} rank - Rank number (1-10)
- * @param {number} size - Badge size in pixels (will be a square)
- * @returns {Buffer} SVG buffer
- */
-function createBadgeSVG(rank, size = 160) {
-  const width = size;
-  const height = size;
-  
-  // Netflix red
-  const bgColor = 'rgb(229, 9, 20)';
-  
-  const rankStr = rank.toString();
-  const fontBase64 = getFontBase64();
-  
-  // Font size: larger for single digit, smaller for double digit
-  const fontSize = rankStr.length === 1 ? Math.floor(size * 0.75) : Math.floor(size * 0.55);
-  
-  // Build the font-face CSS if we have the font
-  const fontFaceCSS = fontBase64 
-    ? `@font-face {
-        font-family: 'BebasNeue';
-        src: url('data:font/woff2;base64,${fontBase64}') format('woff2');
-        font-weight: normal;
-        font-style: normal;
-      }`
-    : '';
-  
-  // Use BebasNeue if available, fall back to Impact/Arial Black
-  const fontFamily = fontBase64 
-    ? "'BebasNeue', Impact, 'Arial Black', sans-serif"
-    : "Impact, 'Arial Black', sans-serif";
-  
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      ${fontFaceCSS}
-      .rank-text {
-        font-family: ${fontFamily};
-        font-size: ${fontSize}px;
-        font-weight: normal;
-        fill: white;
-        text-anchor: middle;
-        dominant-baseline: central;
-      }
-    </style>
-  </defs>
-  <rect width="${width}" height="${height}" fill="${bgColor}" rx="8"/>
-  <text x="${width / 2}" y="${height / 2}" class="rank-text">${rankStr}</text>
-</svg>`;
-  
-  return Buffer.from(svg);
-}
-
-/**
  * Add Netflix rank badge to a poster image
+ * Uses pre-rendered badge PNG images for reliable cross-platform rendering
  * @param {string} posterUrl - URL of the original poster
  * @param {number} rank - Netflix rank (1-10)
  * @returns {Promise<Buffer>} Processed image as JPEG buffer
@@ -134,6 +78,7 @@ async function addBadgeToPoster(posterUrl, rank) {
     console.log(`   📐 Poster dimensions: ${width}x${height}`);
     
     // Calculate badge size (proportional to poster width)
+    // Pre-rendered badges are 160x160, we'll resize them
     const badgeSize = Math.min(Math.floor(width * 0.30), 160); // 30% of width, max 160px
     
     // Position badge at TOP-LEFT corner with padding
@@ -141,13 +86,16 @@ async function addBadgeToPoster(posterUrl, rank) {
     const badgeX = padding;
     const badgeY = padding;
     
-    // Create badge SVG
-    const badgeSvg = createBadgeSVG(rank, badgeSize);
+    // Get pre-rendered badge and resize if needed
+    const badgeBuffer = getBadgeBuffer(rank);
+    const resizedBadge = await sharp(badgeBuffer)
+      .resize(badgeSize, badgeSize)
+      .toBuffer();
     
     // Composite badge onto poster
     const processedImage = await image
       .composite([{
-        input: badgeSvg,
+        input: resizedBadge,
         top: badgeY,
         left: badgeX
       }])
