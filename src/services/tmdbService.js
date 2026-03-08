@@ -403,9 +403,13 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
   }
 }
 
+// TMDB keyword IDs to exclude from documentaries: BTS, making-of, music/concert
+const DOCUMENTARY_EXCLUDE_KEYWORDS = '9817,50244,6029,156205,11634'; // behind the scenes, making of, concert, concert film, live performance
+
 /**
  * Fetch highly rated documentary movies from TMDB
  * Genre 99 = Documentary, sorted by vote average desc, minimum 8.0 rating and 50 votes (aligned with other TMDB catalogues)
+ * Excludes: behind-the-scenes, making-of, concert, concert film, live performance
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of movie metadata (max 20 items)
  */
@@ -420,8 +424,8 @@ async function getHighlyRatedDocumentaryMovies(skip = 0) {
   }
 
   try {
-    console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page})...`);
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=50&page=${page}`;
+    console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page}, excluding BTS/concert keywords)...`);
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=50&without_keywords=${DOCUMENTARY_EXCLUDE_KEYWORDS}&page=${page}`;
     const response = await fetch(url);
 
     if (!response.ok) {
