@@ -180,8 +180,8 @@ app.get('/admin/clear-cache', async (req, res) => {
       // TMDB newly released (all pages)
       'tmdb:movies:newly-released-popular:*',
       'tmdb:series:newly-released-popular:*',
-      // TMDB highly rated documentaries
-      'tmdb:movies:documentaries-high-rated:*',
+      // Trakt documentary list (Rotten Tomatoes 100 Best)
+      'trakt:list:cdtv:rotten-tomatoes-100-best-documentaries-ranked-by-tomatometer*',
       // Netflix Top 10
       'netflix:sweden:movies:top10',
       'netflix:sweden:series:top10',

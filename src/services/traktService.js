@@ -355,11 +355,37 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
   }
 }
 
+// Rotten Tomatoes 100 Best Documentaries (Trakt list by cdtv) – same as catalog "Highly Rated Documentaries"
+const DOCUMENTARY_LIST_USER = 'cdtv';
+const DOCUMENTARY_LIST_SLUG = 'rotten-tomatoes-100-best-documentaries-ranked-by-tomatometer';
+const DOCUMENTARY_LIST_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const PAGE_SIZE = 20;
+
+/**
+ * Fetch "Highly Rated Documentaries" from Trakt list (Rotten Tomatoes 100 Best Documentaries)
+ * List: https://app.trakt.tv/users/cdtv/lists/rotten-tomatoes-100-best-documentaries-ranked-by-tomatometer
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of movie metadata (max 20 items per page)
+ */
+async function getDocumentaryList(skip = 0) {
+  const fullList = await getPublicList(
+    DOCUMENTARY_LIST_USER,
+    DOCUMENTARY_LIST_SLUG,
+    DOCUMENTARY_LIST_CACHE_TTL,
+    null,
+    100
+  );
+  const page = fullList.slice(skip, skip + PAGE_SIZE);
+  console.log(`✅ Documentary list: returning ${page.length} items (skip=${skip}, total=${fullList.length})`);
+  return page;
+}
+
 module.exports = {
   getMovieRecommendations,
   getSeriesRecommendations,
   getTrendingMovies,
   getTrendingSeries,
-  getPublicList
+  getPublicList,
+  getDocumentaryList
 };
 

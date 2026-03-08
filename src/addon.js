@@ -122,9 +122,9 @@ builder.defineCatalogHandler(async (args) => {
         break;
 
       case 'tmdb-documentaries':
-        // Highly rated documentary movies only (TMDB genre 99, rating ≥ 7.5, 100+ votes)
+        // Highly Rated Documentaries – Trakt list (Rotten Tomatoes 100 Best Documentaries)
         if (type === 'movie') {
-          metas = await tmdbService.getHighlyRatedDocumentaryMovies(skip);
+          metas = await traktService.getDocumentaryList(skip);
         }
         break;
 
