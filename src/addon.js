@@ -103,7 +103,7 @@ builder.defineCatalogHandler(async (args) => {
     switch (id) {
       case 'tmdb-new-releases':
         // TMDB newly released movies/series (no auth needed)
-        // Last 30 days (1 month)
+        // Last 14 days
         // Sorted by popularity descending (most popular first)
         // Cached for 24 hours, limited to 20 items per page
         if (type === 'movie') {

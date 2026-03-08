@@ -268,8 +268,11 @@ function getGenreName(id) {
   return genreMap[id] || 'Unknown';
 }
 
+// Newly released window: 14 days so titles don't linger too long
+const NEWLY_RELEASED_DAYS = 14;
+
 /**
- * Fetch newly released popular movies (last 30 days)
+ * Fetch newly released popular movies (last 14 days)
  * Uses TMDB Discover endpoint with date filtering and popularity sorting
  * Filters for digital and physical releases only, with rating above 6.0
  * Excludes Tamil, Chinese, Japanese, and Russian language content
@@ -287,15 +290,15 @@ async function getNewlyReleasedPopular(skip = 0) {
   }
 
   try {
-    // Calculate date range: last 30 days (1 month) dynamically
+    // Calculate date range: last 14 days dynamically
     const today = new Date();
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(today.getDate() - 30);
+    const windowStart = new Date();
+    windowStart.setDate(today.getDate() - NEWLY_RELEASED_DAYS);
     
     const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    const startDate = oneMonthAgo.toISOString().split('T')[0];
+    const startDate = windowStart.toISOString().split('T')[0];
     
-    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last 30 days: ${startDate} to ${endDate}, page ${page})...`);
+    console.log(`🔍 Fetching FRESH newly released popular movies from TMDB (last ${NEWLY_RELEASED_DAYS} days: ${startDate} to ${endDate}, page ${page})...`);
     
     // Use discover endpoint with filters matching TMDB's website exactly
     // with_release_type: 4 = Digital, 5 = Physical (Blu-ray/DVD)
@@ -331,7 +334,7 @@ async function getNewlyReleasedPopular(skip = 0) {
 }
 
 /**
- * Fetch newly released popular TV shows (last 30 days)
+ * Fetch newly released popular TV shows (last 14 days)
  * Includes both brand new shows AND new seasons of existing shows
  * Filters to only shows that premiered in the last 10 years (no very old shows with new episodes)
  * Excludes Tamil, Chinese, Japanese, and Russian language content
@@ -350,20 +353,20 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
   }
 
   try {
-    // Calculate date range: last 30 days for episodes
+    // Calculate date range: last 14 days for episodes
     const today = new Date();
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(today.getDate() - 30);
+    const windowStart = new Date();
+    windowStart.setDate(today.getDate() - NEWLY_RELEASED_DAYS);
     
     const endDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    const startDate = oneMonthAgo.toISOString().split('T')[0];
+    const startDate = windowStart.toISOString().split('T')[0];
     
     // Calculate first air date limit: 10 years ago (to exclude very old shows)
     const tenYearsAgo = new Date();
     tenYearsAgo.setFullYear(today.getFullYear() - 10);
     const showMinDate = tenYearsAgo.toISOString().split('T')[0];
     
-    console.log(`🔍 Fetching FRESH newly released popular series from TMDB (episodes: ${startDate} to ${endDate}, shows from ${showMinDate} onwards, page ${page})...`);
+    console.log(`🔍 Fetching FRESH newly released popular series from TMDB (episodes: last ${NEWLY_RELEASED_DAYS} days ${startDate} to ${endDate}, shows from ${showMinDate} onwards, page ${page})...`);
     
     // Use discover endpoint for TV shows
     // air_date: Date of ANY episode airing (includes new seasons of existing shows)
