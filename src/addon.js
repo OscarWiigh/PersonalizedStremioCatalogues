@@ -29,14 +29,14 @@ const manifest = {
       extra: [{ name: 'skip', isRequired: false }]
     },
     
-    // Newly Released Series (TMDB)
+    // Trending TV Shows (Trakt)
     {
       type: 'series',
-      id: 'tmdb-new-releases',
-      name: 'Newly Released',
+      id: 'trakt-trending',
+      name: 'Trending',
       extra: [{ name: 'skip', isRequired: false }]
     },
-    
+
     // Netflix Sweden Top 10 Catalog (Movies Only)
     {
       type: 'movie',
@@ -102,14 +102,16 @@ builder.defineCatalogHandler(async (args) => {
     // Route to appropriate service based on catalog ID
     switch (id) {
       case 'tmdb-new-releases':
-        // TMDB newly released movies/series (no auth needed)
-        // Last 14 days
-        // Sorted by popularity descending (most popular first)
-        // Cached for 24 hours, limited to 20 items per page
+        // TMDB newly released movies only (last 14 days), no auth
         if (type === 'movie') {
           metas = await tmdbService.getNewlyReleasedPopular(skip);
-        } else if (type === 'series') {
-          metas = await tmdbService.getNewlyReleasedPopularSeries(skip);
+        }
+        break;
+
+      case 'trakt-trending':
+        // Trakt trending TV shows (no auth)
+        if (type === 'series') {
+          metas = await traktService.getTrendingSeries(skip);
         }
         break;
         
