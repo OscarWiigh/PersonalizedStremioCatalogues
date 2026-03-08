@@ -358,6 +358,7 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
 module.exports = {
   getMovieRecommendations,
   getSeriesRecommendations,
+  getTrendingSeries,
   getPublicList
 };
 
