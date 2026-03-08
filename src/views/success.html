@@ -334,13 +334,25 @@
     <h1>Authentication Successful!</h1>
     <p class="subtitle">Your addon is ready to use</p>
     
-    <div class="addon-url-box">
-      <h3>Install the Addon in Stremio</h3>
-      <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        This link includes your session – use it to install. If you see &quot;Invalid session&quot; later (e.g. after server restart or Redis clear), come back here and re-authenticate to get a new link.
+    <div class="addon-url-box" style="background: #fff3cd; border: 2px solid #ffc107;">
+      <h3>Session ID (hardcode in addon)</h3>
+      <p style="color: #856404; font-size: 14px; margin-bottom: 12px;">
+        Copy this Session ID and set it in <code>src/addon.js</code> (HARDCODED_SESSION_ID):
       </p>
       
-      <div class="url-display" id="addon-url">ADDON_URL_PLACEHOLDER</div>
+      <div class="url-display" id="session-id" style="font-family: 'Courier New', monospace; font-size: 12px; background: #fff; word-break: break-all;">SESSION_ID_HERE</div>
+      <button class="copy-button" onclick="copySessionId()" style="background: #28a745;">
+        📋 Copy Session ID
+      </button>
+    </div>
+    
+    <div class="addon-url-box">
+      <h3>Install the Addon</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
+        After updating the session ID in the code and deploying, click to install:
+      </p>
+      
+      <div class="url-display" id="addon-url">stremio://127.0.0.1:8000/manifest.json</div>
       <button class="copy-button" onclick="installInStremio()" style="margin-bottom: 10px;">
         📥 Install in Stremio
       </button>
@@ -349,24 +361,12 @@
       </button>
     </div>
     
-    <div class="addon-url-box" style="background: #f8f9fa;">
-      <h3>Session ID (for Netflix import below)</h3>
-      <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Your session is embedded in the addon URL above. Shown here for the Netflix import:
-      </p>
-      
-      <div class="url-display" id="session-id" style="font-family: 'Courier New', monospace; font-size: 12px; background: #fff; word-break: break-all;">SESSION_ID_HERE</div>
-      <button class="copy-button" onclick="copySessionId()" style="background: #6c757d;">
-        📋 Copy Session ID
-      </button>
-    </div>
-    
     <div class="instructions">
       <h3>Steps:</h3>
       <ol>
-        <li><strong>Click &quot;Install in Stremio&quot;</strong> (or copy the addon URL and add it in Stremio)</li>
+        <li><strong>Copy the Session ID</strong> above and set it in <code>src/addon.js</code> as <code>HARDCODED_SESSION_ID</code></li>
+        <li>Deploy (or restart locally), then <strong>click &quot;Install in Stremio&quot;</strong></li>
         <li>Your personal Trakt recommendations will appear in the catalog</li>
-        <li>If you see &quot;Invalid session&quot;, re-authenticate on this site and install using the new link</li>
       </ol>
     </div>
     

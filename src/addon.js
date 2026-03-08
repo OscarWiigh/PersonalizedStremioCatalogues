@@ -20,10 +20,6 @@ const manifest = {
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
-  // Session in URL path: .../SESSION_ID/manifest.json so we get args.config = SESSION_ID
-  config: [{ key: 'session', title: 'Session', type: 'text' }],
-  behaviorHints: { configurable: false }, // Session comes from success-page link, not Configure
-
   catalogs: [
     // Newly Released Movies (TMDB)
     {
@@ -71,24 +67,14 @@ const manifest = {
 const builder = new addonBuilder(manifest);
 
 /**
- * Extract session ID from addon request (URL path config or fallback for dev)
- * When installed via success page URL like .../SESSION_ID/manifest.json, args.config is SESSION_ID
- * @param {object} args - Request args from Stremio SDK ({ type, id, extra, config })
+ * Extract session ID – hardcoded for now
+ * @param {object} args - Request args from Stremio SDK
  * @returns {string|null} Session ID
  */
 function extractSession(args) {
-  const config = args.config;
-  if (config != null && typeof config === 'string' && config.length > 0) {
-    console.log(`✅ Using session from URL: ${config.substring(0, 8)}...`);
-    return config;
-  }
-  if (config != null && typeof config === 'object' && config.session) {
-    console.log(`✅ Using session from config: ${String(config.session).substring(0, 8)}...`);
-    return config.session;
-  }
-  // Fallback: no session in URL (e.g. old install or dev) – Trakt catalogs will need valid session in URL
-  console.log('ℹ️  No session in addon URL (install using the link from the success page after logging in)');
-  return null;
+  const HARDCODED_SESSION_ID = '1ad4cb50-642d-47e8-912d-c9a3d15e4d43';
+  console.log(`✅ Using hardcoded session: ${HARDCODED_SESSION_ID.substring(0, 8)}...`);
+  return HARDCODED_SESSION_ID;
 }
 
 /**
@@ -126,10 +112,10 @@ builder.defineCatalogHandler(async (args) => {
           return { metas: [] };
         }
         
-        // Verify session is valid (exists in store – may be expired if Redis cleared or server restarted)
+        // Verify session is valid
         const isValid = await sessionManager.isValidSession(sessionId);
         if (!isValid) {
-          console.warn('⚠️  Invalid session for Trakt recommendations (session not in store – re-authenticate at the addon website to get a new link), returning empty');
+          console.warn('⚠️  Invalid session for Trakt recommendations, returning empty');
           return { metas: [] };
         }
         

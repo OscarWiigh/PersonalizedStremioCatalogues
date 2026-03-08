@@ -233,13 +233,12 @@ router.get('/success', async (req, res) => {
   // Get base URL
   const baseUrl = getBaseUrl(req);
   
-  // Addon URL with session in path so the addon receives args.config = sessionId
-  const manifestUrl = `${baseUrl}/${session}/manifest.json`;
+  const manifestUrl = `${baseUrl}/manifest.json`;
   const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
   
+  html = html.replace(/stremio:\/\/127\.0\.0\.1:8000\/manifest\.json/g, stremioUrl);
+  html = html.replace(/http:\/\/127\.0\.0\.1:8000\/manifest\.json/g, manifestUrl);
   html = html.replace(/SESSION_ID_HERE/g, session);
-  html = html.replace(/ADDON_URL_PLACEHOLDER/g, stremioUrl);
-  html = html.replace(/ADDON_HTTP_URL_PLACEHOLDER/g, manifestUrl);
   
   res.send(html);
 });
