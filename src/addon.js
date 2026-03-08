@@ -15,53 +15,41 @@ const manifest = {
   id: 'com.stremio.catalog.trakt.netflix.tmdb',
   version: '2.0.0',
   name: 'Personalized Catalog',
-  description: 'Newly released movies & shows (TMDB), Netflix Sweden Top 10, and personalized Trakt recommendations.',
+  description: 'Trakt trending movies & series, Netflix Sweden Top 10, personal recommendations, and highly rated documentaries.',
   logo: 'https://stremiocatalogues.vercel.app/icon.png',
   
   resources: ['catalog', 'stream'],
   types: ['movie', 'series'],
   catalogs: [
-    // Newly Released Movies (TMDB)
+    // 1. Trending (movies) – Trakt
     {
       type: 'movie',
-      id: 'tmdb-new-releases',
-      name: 'Newly Released',
+      id: 'trakt-trending',
+      name: 'Trending',
       extra: [{ name: 'skip', isRequired: false }]
     },
-    
-    // Trending TV Shows (Trakt)
+    // 2. Trending (series) – Trakt
     {
       type: 'series',
       id: 'trakt-trending',
       name: 'Trending',
       extra: [{ name: 'skip', isRequired: false }]
     },
-
-    // Netflix Sweden Top 10 Catalog (Movies Only)
+    // 3. Netflix Top 10 Sweden (movies)
     {
       type: 'movie',
       id: 'netflix-sweden-top10',
-      name: 'Netflix Sweden Top 10',
+      name: 'Netflix Top 10 Sweden',
       extra: [{ name: 'skip', isRequired: false }]
     },
-    
-    // Your Personal Recommendations - Movies
+    // 4. Your personal recommendations (movies only)
     {
       type: 'movie',
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
       extra: [{ name: 'skip', isRequired: false }]
     },
-    
-    // Your Personal Recommendations - Series
-    {
-      type: 'series',
-      id: 'trakt-recommendations',
-      name: 'Your Personal Recommendations',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-
-    // Highly Rated Documentary Movies (TMDB)
+    // 5. Highly rated documentaries (movies)
     {
       type: 'movie',
       id: 'tmdb-documentaries',
@@ -101,38 +89,28 @@ builder.defineCatalogHandler(async (args) => {
     
     // Route to appropriate service based on catalog ID
     switch (id) {
-      case 'tmdb-new-releases':
-        // TMDB newly released movies only (last 14 days), no auth
-        if (type === 'movie') {
-          metas = await tmdbService.getNewlyReleasedPopular(skip);
-        }
-        break;
-
       case 'trakt-trending':
-        // Trakt trending TV shows (no auth)
-        if (type === 'series') {
+        // Trakt trending (movies and series), no auth
+        if (type === 'movie') {
+          metas = await traktService.getTrendingMovies(skip);
+        } else if (type === 'series') {
           metas = await traktService.getTrendingSeries(skip);
         }
         break;
-        
+
       case 'trakt-recommendations':
-        // Trakt recommendations require authentication
+        // Your personal recommendations (movies only), requires auth
         if (!sessionId) {
           console.warn('⚠️  No session provided for Trakt recommendations, returning empty');
           return { metas: [] };
         }
-        
-        // Verify session is valid
         const isValid = await sessionManager.isValidSession(sessionId);
         if (!isValid) {
           console.warn('⚠️  Invalid session for Trakt recommendations, returning empty');
           return { metas: [] };
         }
-        
         if (type === 'movie') {
           metas = await traktService.getMovieRecommendations(sessionId, skip);
-        } else if (type === 'series') {
-          metas = await traktService.getSeriesRecommendations(sessionId, skip);
         }
         break;
         
