@@ -59,6 +59,14 @@ const manifest = {
       id: 'trakt-recommendations',
       name: 'Your Personal Recommendations',
       extra: [{ name: 'skip', isRequired: false }]
+    },
+
+    // Highly Rated Documentary Movies (TMDB)
+    {
+      type: 'movie',
+      id: 'tmdb-documentaries',
+      name: 'Highly Rated Documentaries',
+      extra: [{ name: 'skip', isRequired: false }]
     }
   ]
 };
@@ -132,7 +140,14 @@ builder.defineCatalogHandler(async (args) => {
           metas = await netflixService.getNetflixTop10Movies();
         }
         break;
-        
+
+      case 'tmdb-documentaries':
+        // Highly rated documentary movies only (TMDB genre 99, rating ≥ 7.5, 100+ votes)
+        if (type === 'movie') {
+          metas = await tmdbService.getHighlyRatedDocumentaryMovies(skip);
+        }
+        break;
+
       default:
         console.warn(`⚠️  Unknown catalog ID: ${id}`);
         return { metas: [] };

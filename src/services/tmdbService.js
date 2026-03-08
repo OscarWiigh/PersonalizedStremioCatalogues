@@ -400,6 +400,44 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
   }
 }
 
+/**
+ * Fetch highly rated documentary movies from TMDB
+ * Genre 99 = Documentary, sorted by vote average desc, minimum 8.0 rating and 100 votes
+ * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @returns {Promise<Array>} Array of movie metadata (max 20 items)
+ */
+async function getHighlyRatedDocumentaryMovies(skip = 0) {
+  const page = Math.floor(skip / 20) + 1;
+  const cacheKey = `tmdb:movies:documentaries-high-rated:page${page}`;
+  const cached = await cache.get(cacheKey);
+
+  if (cached) {
+    console.log(`💾 Serving highly rated documentaries page ${page} from cache (Redis)`);
+    return cached;
+  }
+
+  try {
+    console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page})...`);
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=100&page=${page}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ TMDB returned ${data.results.length} highly rated documentaries (cached for 24h)`);
+    const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'movie')));
+
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    await cache.set(cacheKey, metas, TWENTY_FOUR_HOURS);
+    return metas;
+  } catch (error) {
+    console.error('❌ Error fetching highly rated documentaries from TMDB:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   getTrendingMovies,
   getTrendingSeries,
@@ -407,6 +445,7 @@ module.exports = {
   getPopularSeries,
   getNewAndPopular,
   getNewlyReleasedPopular,
-  getNewlyReleasedPopularSeries
+  getNewlyReleasedPopularSeries,
+  getHighlyRatedDocumentaryMovies
 };
 
