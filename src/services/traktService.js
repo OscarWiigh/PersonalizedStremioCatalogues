@@ -359,15 +359,77 @@ async function getPublicList(username, listSlug, cacheTTL = config.cache.traktTT
 const DOCUMENTARY_LIST_USER = 'cdtv';
 const DOCUMENTARY_LIST_SLUG = 'rotten-tomatoes-100-best-documentaries-ranked-by-tomatometer';
 const DOCUMENTARY_LIST_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const WATCHED_CACHE_TTL = 10 * 60 * 1000; // 10 min for watched list
 const PAGE_SIZE = 20;
 
+/** Fisher-Yates shuffle – new random order each cache cycle */
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /**
- * Fetch "Highly Rated Documentaries" from Trakt list (Rotten Tomatoes 100 Best Documentaries)
- * List: https://app.trakt.tv/users/cdtv/lists/rotten-tomatoes-100-best-documentaries-ranked-by-tomatometer
+ * Get the set of watched movie IDs for a user (imdb + trakt) for filtering. Cached 10 min.
+ * @param {string} sessionId - User session ID (OAuth)
+ * @returns {Promise<{ imdb: Set<string>, trakt: Set<string> }>}
+ */
+async function getWatchedMovieIds(sessionId) {
+  const cacheKey = `trakt:watched:movies:${sessionId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) {
+    return parseWatchedFromCache(cached);
+  }
+  const headers = await getTraktHeaders(sessionId);
+  if (!headers.Authorization) {
+    return { imdb: new Set(), trakt: new Set() };
+  }
+  try {
+    const response = await fetch(`${config.trakt.apiUrl}/sync/watched/movies`, { headers });
+    if (!response.ok) return { imdb: new Set(), trakt: new Set() };
+    const data = await response.json();
+    const imdb = new Set();
+    const trakt = new Set();
+    for (const item of data || []) {
+      const m = item.movie || item;
+      if (m.ids) {
+        if (m.ids.imdb) imdb.add(m.ids.imdb);
+        if (m.ids.trakt) trakt.add(String(m.ids.trakt));
+      }
+    }
+    await cache.set(cacheKey, { imdb: [...imdb], trakt: [...trakt] }, WATCHED_CACHE_TTL);
+    return { imdb, trakt };
+  } catch (err) {
+    console.error('❌ Error fetching watched movies:', err.message);
+    return { imdb: new Set(), trakt: new Set() };
+  }
+}
+
+function parseWatchedFromCache(cached) {
+  if (!cached) return { imdb: new Set(), trakt: new Set() };
+  return {
+    imdb: new Set(Array.isArray(cached.imdb) ? cached.imdb : []),
+    trakt: new Set(Array.isArray(cached.trakt) ? cached.trakt : [])
+  };
+}
+
+function isMovieWatched(meta, watched) {
+  if (meta.id && meta.id.startsWith('tt')) return watched.imdb.has(meta.id);
+  if (meta.id && meta.id.startsWith('trakt:')) return watched.trakt.has(meta.id.replace('trakt:', ''));
+  return false;
+}
+
+/**
+ * Fetch "Highly Rated Documentaries" from Trakt list (Rotten Tomatoes 100 Best Documentaries).
+ * Shuffles the list each time the cache refreshes. Optionally filters out movies already watched (if sessionId provided).
  * @param {number} skip - Number of items to skip for pagination (default: 0)
+ * @param {string} [sessionId] - User session ID to exclude watched movies (optional)
  * @returns {Promise<Array>} Array of movie metadata (max 20 items per page)
  */
-async function getDocumentaryList(skip = 0) {
+async function getDocumentaryList(skip = 0, sessionId = null) {
   const fullList = await getPublicList(
     DOCUMENTARY_LIST_USER,
     DOCUMENTARY_LIST_SLUG,
@@ -375,8 +437,20 @@ async function getDocumentaryList(skip = 0) {
     null,
     100
   );
-  const page = fullList.slice(skip, skip + PAGE_SIZE);
-  console.log(`✅ Documentary list: returning ${page.length} items (skip=${skip}, total=${fullList.length})`);
+  const cacheKey = `trakt:documentaries:shuffled:${sessionId || 'anon'}`;
+  let list = await cache.get(cacheKey);
+  if (!list) {
+    let filtered = fullList;
+    if (sessionId) {
+      const watched = await getWatchedMovieIds(sessionId);
+      filtered = fullList.filter(meta => !isMovieWatched(meta, watched));
+      console.log(`✅ Documentary list: filtered to ${filtered.length} unwatched (${fullList.length - filtered.length} already watched)`);
+    }
+    list = shuffleArray(filtered);
+    await cache.set(cacheKey, list, DOCUMENTARY_LIST_CACHE_TTL);
+  }
+  const page = list.slice(skip, skip + PAGE_SIZE);
+  console.log(`✅ Documentary list: returning ${page.length} items (skip=${skip}, total=${list.length})`);
   return page;
 }
 

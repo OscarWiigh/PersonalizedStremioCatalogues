@@ -122,9 +122,9 @@ builder.defineCatalogHandler(async (args) => {
         break;
 
       case 'tmdb-documentaries':
-        // Highly Rated Documentaries – Trakt list (Rotten Tomatoes 100 Best Documentaries)
+        // Highly Rated Documentaries – Trakt list (shuffled each cache refresh, unwatched only if logged in)
         if (type === 'movie') {
-          metas = await traktService.getDocumentaryList(skip);
+          metas = await traktService.getDocumentaryList(skip, sessionId);
         }
         break;
 
