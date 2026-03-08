@@ -403,13 +403,23 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
   }
 }
 
-// TMDB keyword IDs to exclude from documentaries: BTS, making-of, music/concert
-const DOCUMENTARY_EXCLUDE_KEYWORDS = '9817,50244,6029,156205,11634'; // behind the scenes, making of, concert, concert film, live performance
+// TMDB keyword IDs to exclude from documentaries: BTS, making-of, music/concert, sport
+const DOCUMENTARY_EXCLUDE_KEYWORDS = '9817,50244,6029,156205,11634,6075'; // behind the scenes, making of, concert, concert film, live performance, sports
+
+/** Fisher-Yates shuffle – random order for documentaries each cache cycle */
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /**
  * Fetch highly rated documentary movies from TMDB
- * Genre 99 = Documentary, sorted by vote average desc, minimum 8.0 rating and 50 votes (aligned with other TMDB catalogues)
- * Excludes: behind-the-scenes, making-of, concert, concert film, live performance
+ * Genre 99 = Documentary, minimum 8.0 rating and 100 votes. Results shuffled so order is random each time cache expires.
+ * Excludes: behind-the-scenes, making-of, concert, concert film, live performance, sports
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of movie metadata (max 20 items)
  */
@@ -424,8 +434,8 @@ async function getHighlyRatedDocumentaryMovies(skip = 0) {
   }
 
   try {
-    console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page}, excluding BTS/concert keywords)...`);
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=50&without_keywords=${DOCUMENTARY_EXCLUDE_KEYWORDS}&page=${page}`;
+    console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page}, excluding BTS/concert/sport keywords, 100+ votes)...`);
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=100&without_keywords=${DOCUMENTARY_EXCLUDE_KEYWORDS}&page=${page}`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -433,8 +443,9 @@ async function getHighlyRatedDocumentaryMovies(skip = 0) {
     }
 
     const data = await response.json();
-    console.log(`✅ TMDB returned ${data.results.length} highly rated documentaries (cached for 24h)`);
-    const metas = await Promise.all(data.results.map(item => mapTMDBToMeta(item, 'movie')));
+    const results = shuffleArray(data.results || []);
+    console.log(`✅ TMDB returned ${results.length} highly rated documentaries (shuffled, cached for 24h)`);
+    const metas = await Promise.all(results.map(item => mapTMDBToMeta(item, 'movie')));
 
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     await cache.set(cacheKey, metas, TWENTY_FOUR_HOURS);
