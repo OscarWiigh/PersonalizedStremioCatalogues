@@ -402,7 +402,7 @@ async function getNewlyReleasedPopularSeries(skip = 0) {
 
 /**
  * Fetch highly rated documentary movies from TMDB
- * Genre 99 = Documentary, sorted by vote average desc, minimum 8.0 rating and 100 votes
+ * Genre 99 = Documentary, sorted by vote average desc, minimum 8.0 rating and 50 votes (aligned with other TMDB catalogues)
  * @param {number} skip - Number of items to skip for pagination (default: 0)
  * @returns {Promise<Array>} Array of movie metadata (max 20 items)
  */
@@ -418,7 +418,7 @@ async function getHighlyRatedDocumentaryMovies(skip = 0) {
 
   try {
     console.log(`🔍 Fetching highly rated documentary movies from TMDB (page ${page})...`);
-    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=100&page=${page}`;
+    const url = `${config.tmdb.apiUrl}/discover/movie?api_key=${config.tmdb.apiKey}&with_genres=99&sort_by=vote_average.desc&vote_average.gte=8&vote_count.gte=50&page=${page}`;
     const response = await fetch(url);
 
     if (!response.ok) {
